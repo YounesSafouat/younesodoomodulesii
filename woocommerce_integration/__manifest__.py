@@ -52,6 +52,6 @@ Features:
     'demo': [],
     'installable': True,
     'auto_install': False,
-    'application': False,
+    'application': True,
     'license': 'LGPL-3',
 }
