@@ -76,7 +76,7 @@ class WooCommerceOrderWebhook(models.Model):
         string='Webhook Logs'
     )
     
-    @api.depends('id')
+    @api.depends()
     def _compute_webhook_url(self):
         """Compute webhook URL"""
         for webhook in self:
