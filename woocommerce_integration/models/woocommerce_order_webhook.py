@@ -81,8 +81,24 @@ class WooCommerceOrderWebhook(models.Model):
         """Compute webhook URL"""
         for webhook in self:
             if webhook.id:
-                # Get base URL from request
-                base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                # Try to get base URL from request first
+                try:
+                    base_url = self.env['ir.http']._get_default_port()
+                    if not base_url or 'localhost' in base_url:
+                        # If no valid base URL, try to get from config
+                        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                except:
+                    base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                
+                # Fallback to request URL if available
+                if not base_url or 'localhost' in base_url:
+                    try:
+                        from odoo.http import request
+                        if hasattr(request, 'httprequest') and request.httprequest:
+                            base_url = request.httprequest.host_url
+                    except:
+                        pass
+                
                 webhook.webhook_url = f"{base_url}/woocommerce/webhook/{webhook.id}"
             else:
                 webhook.webhook_url = False
