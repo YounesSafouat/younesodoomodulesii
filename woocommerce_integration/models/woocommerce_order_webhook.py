@@ -28,6 +28,7 @@ class WooCommerceOrderWebhook(models.Model):
     
     webhook_url = fields.Char(
         string='Webhook URL',
+        compute='_compute_webhook_url',
         help='URL to receive webhooks from WooCommerce'
     )
     
@@ -74,6 +75,17 @@ class WooCommerceOrderWebhook(models.Model):
         'webhook_id',
         string='Webhook Logs'
     )
+    
+    @api.depends('id')
+    def _compute_webhook_url(self):
+        """Compute webhook URL"""
+        for webhook in self:
+            if webhook.id:
+                # Get base URL from request
+                base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                webhook.webhook_url = f"{base_url}/woocommerce/webhook/{webhook.id}"
+            else:
+                webhook.webhook_url = False
     
     def action_test_webhook(self):
         """Test webhook functionality"""
