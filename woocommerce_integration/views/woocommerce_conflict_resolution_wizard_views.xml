@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Conflict Resolution Wizard Form View -->
+        <record id="woocommerce_conflict_resolution_wizard_form_view" model="ir.ui.view">
+            <field name="name">woocommerce.conflict.resolution.wizard.form</field>
+            <field name="model">woocommerce.conflict.resolution.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Resolve WooCommerce Sync Conflicts">
+                    <div class="oe_title">
+                        <h1>Sync Conflicts Resolution</h1>
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="resolution_method" widget="radio" string="Resolution Method"/>
+                        </group>
+                        <group>
+                            <field name="include_images"/>
+                            <field name="auto_apply"/>
+                        </group>
+                    </group>
+                    
+                    <field name="conflict_details" readonly="1"/>
+                    
+                    <field name="product_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="wc_sync_status" widget="badge"/>
+                            <field name="wc_last_sync"/>
+                            <field name="wc_last_error"/>
+                        </list>
+                    </field>
+                    
+                    <footer>
+                        <button name="action_resolve_conflicts" type="object" 
+                                string="Resolve Conflicts" 
+                                class="btn-primary"
+                                confirm="Are you sure you want to resolve these conflicts? This will apply the selected resolution method to all conflicting products."/>
+                        <button name="action_preview_conflicts" type="object" 
+                                string="Preview Conflicts" 
+                                class="btn-secondary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Conflict Resolution Wizard Action -->
+        <record id="action_woocommerce_conflict_resolution_wizard" model="ir.actions.act_window">
+            <field name="name">Resolve WooCommerce Conflicts</field>
+            <field name="res_model">woocommerce.conflict.resolution.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+            <field name="view_id" ref="woocommerce_conflict_resolution_wizard_form_view"/>
+        </record>
+
+    </data>
+</odoo>
+

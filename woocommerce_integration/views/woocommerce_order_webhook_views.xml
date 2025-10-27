@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Webhook Tree View -->
+    <record id="woocommerce_order_webhook_tree_view" model="ir.ui.view">
+        <field name="name">woocommerce.order.webhook.tree</field>
+        <field name="model">woocommerce.order.webhook</field>
+        <field name="arch" type="xml">
+            <list string="WooCommerce Order Webhooks">
+                <field name="name"/>
+                <field name="connection_id"/>
+                <field name="webhook_topic"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="auto_create_odoo_order" widget="boolean_toggle"/>
+                <field name="webhook_url" invisible="1"/>
+                <field name="create_date"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Webhook Form View -->
+    <record id="woocommerce_order_webhook_form_view" model="ir.ui.view">
+        <field name="name">woocommerce.order.webhook.form</field>
+        <field name="model">woocommerce.order.webhook</field>
+        <field name="arch" type="xml">
+            <form string="WooCommerce Order Webhook">
+                <header>
+                    <button name="action_test_webhook" string="Test Webhook" type="object" class="btn-primary" icon="fa-play"/>
+                    <field name="active" widget="boolean_button" options="{'terminology': 'archive'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Webhook Name"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group>
+                            <field name="connection_id" options="{'no_create': True}"/>
+                            <field name="webhook_topic"/>
+                            <field name="order_prefix"/>
+                        </group>
+                        <group>
+                            <field name="auto_create_odoo_order" widget="boolean_toggle"/>
+                            <field name="auto_create_customer" widget="boolean_toggle"/>
+                            <field name="webhook_url" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Security">
+                        <field name="webhook_secret" password="True"/>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Webhook Logs" name="logs">
+                            <field name="webhook_log_ids" readonly="1">
+                                <list>
+                                    <field name="create_date"/>
+                                    <field name="status" widget="badge" 
+                                           decoration-success="status == 'success'"
+                                           decoration-info="status == 'processing'"
+                                           decoration-danger="status == 'error'"/>
+                                    <field name="message"/>
+                                    <field name="odoo_order_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Webhook Search View -->
+    <record id="woocommerce_order_webhook_search_view" model="ir.ui.view">
+        <field name="name">woocommerce.order.webhook.search</field>
+        <field name="model">woocommerce.order.webhook</field>
+        <field name="arch" type="xml">
+            <search string="Search WooCommerce Order Webhooks">
+                <field name="name"/>
+                <field name="connection_id"/>
+                <field name="webhook_topic"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="Auto Create Orders" name="auto_create" domain="[('auto_create_odoo_order', '=', True)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Connection" name="group_connection" context="{'group_by': 'connection_id'}"/>
+                    <filter string="Webhook Topic" name="group_topic" context="{'group_by': 'webhook_topic'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Webhook Action -->
+    <record id="woocommerce_order_webhook_action" model="ir.actions.act_window">
+        <field name="name">WooCommerce Order Webhooks</field>
+        <field name="res_model">woocommerce.order.webhook</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="woocommerce_order_webhook_search_view"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create your first WooCommerce Order Webhook!
+            </p>
+            <p>
+                Webhooks allow WooCommerce to automatically send order data to Odoo
+                when orders are created, updated, or completed.
+            </p>
+        </field>
+    </record>
+
+    <!-- Webhook Menu -->
+    <menuitem id="menu_woocommerce_order_webhooks"
+              name="Order Webhooks"
+              parent="menu_woocommerce_main"
+              action="woocommerce_order_webhook_action"
+              sequence="40"/>
+
+    <!-- Webhook Log Tree View -->
+    <record id="woocommerce_order_webhook_log_tree_view" model="ir.ui.view">
+        <field name="name">woocommerce.order.webhook.log.tree</field>
+        <field name="model">woocommerce.order.webhook.log</field>
+        <field name="arch" type="xml">
+            <list string="Webhook Logs">
+                <field name="webhook_id"/>
+                <field name="create_date"/>
+                <field name="status" widget="badge" 
+                       decoration-success="status == 'success'"
+                       decoration-info="status == 'processing'"
+                       decoration-danger="status == 'error'"/>
+                <field name="message"/>
+                <field name="odoo_order_id"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Webhook Log Form View -->
+    <record id="woocommerce_order_webhook_log_form_view" model="ir.ui.view">
+        <field name="name">woocommerce.order.webhook.log.form</field>
+        <field name="model">woocommerce.order.webhook.log</field>
+        <field name="arch" type="xml">
+            <form string="Webhook Log">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="webhook_id"/>
+                            <field name="create_date"/>
+                            <field name="status"/>
+                            <field name="odoo_order_id"/>
+                        </group>
+                    </group>
+                    <group string="Message">
+                        <field name="message"/>
+                    </group>
+                    <group string="Raw Data">
+                        <field name="raw_data" widget="text"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Webhook Log Action -->
+    <record id="woocommerce_order_webhook_log_action" model="ir.actions.act_window">
+        <field name="name">Webhook Logs</field>
+        <field name="res_model">woocommerce.order.webhook.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No webhook logs yet!
+            </p>
+            <p>
+                Webhook logs will appear here when WooCommerce sends order data to Odoo.
+            </p>
+        </field>
+    </record>
+
+    <!-- Webhook Log Menu -->
+    <menuitem id="menu_woocommerce_webhook_logs"
+              name="Webhook Logs"
+              parent="menu_woocommerce_main"
+              action="woocommerce_order_webhook_log_action"
+              sequence="41"/>
+
+</odoo>

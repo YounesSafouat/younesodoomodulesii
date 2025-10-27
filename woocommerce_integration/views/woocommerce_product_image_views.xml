@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- WooCommerce Product Image Tree View -->
+        <record id="view_woocommerce_product_image_tree" model="ir.ui.view">
+            <field name="name">woocommerce.product.image.tree</field>
+            <field name="model">woocommerce.product.image</field>
+            <field name="arch" type="xml">
+                <list string="Product Images" default_order="sequence, name">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="image_1920" widget="image"/>
+                    <field name="is_main_image"/>
+                    <field name="product_id"/>
+                    <field name="sync_status"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WooCommerce Product Image Form View -->
+        <record id="view_woocommerce_product_image_form" model="ir.ui.view">
+            <field name="name">woocommerce.product.image.form</field>
+            <field name="model">woocommerce.product.image</field>
+            <field name="arch" type="xml">
+                <form string="Product Image">
+                    <header>
+                        <button name="action_set_as_main_image" type="object" 
+                                string="Set as Main Image" 
+                                class="btn-primary"
+                                invisible="is_main_image"
+                                help="Make this the primary product image"/>
+                        <button name="action_move_up" type="object" 
+                                string="Move Up" 
+                                class="btn-secondary"
+                                help="Move image earlier in sequence"/>
+                        <button name="action_move_down" type="object" 
+                                string="Move Down" 
+                                class="btn-secondary"
+                                help="Move image later in sequence"/>
+                        <field name="sync_status" widget="statusbar" statusbar_visible="pending,synced,error"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_sync_to_woocommerce" type="object" 
+                                    class="oe_stat_button" icon="fa-upload"
+                                    invisible="sync_status == 'synced' or not image_1920">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">Sync to</span>
+                                    <span class="o_stat_text">WooCommerce</span>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <!-- Main Image Indicator -->
+                        <div class="alert alert-success" role="alert" invisible="not is_main_image">
+                            <strong>This is the MAIN IMAGE</strong> - It will appear first in WooCommerce
+                        </div>
+                        
+                        <group>
+                            <group>
+                                <field name="name" string="Image Name"/>
+                                <field name="sequence" string="Order" 
+                                       help="Lower numbers appear first (main image should be 5)"/>
+                                <field name="is_main_image" string="Main Image" 
+                                       help="Check to make this the primary product image"/>
+                                <field name="alt_text" string="Alt Text" 
+                                       help="Alternative text for accessibility"/>
+                            </group>
+                            <group>
+                                <field name="wc_image_id" readonly="1" string="WooCommerce ID"/>
+                                <field name="wc_image_url" readonly="1" string="WooCommerce URL"/>
+                                <field name="sync_status" string="Sync Status"/>
+                                <field name="sync_error" readonly="1" string="Last Error"
+                                       invisible="not sync_error" widget="text"/>
+                            </group>
+                        </group>
+                        
+                        <group>
+                            <field name="image_1920" widget="image" class="oe_avatar"/>
+                        </group>
+                        
+                        <group string="Image URLs" invisible="not wc_image_url">
+                            <field name="wc_image_url" readonly="1" widget="url"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WooCommerce Product Image Search View -->
+        <record id="view_woocommerce_product_image_search" model="ir.ui.view">
+            <field name="name">woocommerce.product.image.search</field>
+            <field name="model">woocommerce.product.image</field>
+            <field name="arch" type="xml">
+                <search string="Search Product Images">
+                    <field name="name"/>
+                    <field name="product_id"/>
+                    <field name="alt_text"/>
+                    <filter string="Main Images" name="main_images" 
+                            domain="[('is_main_image', '=', True)]"/>
+                    <filter string="Synced" name="synced" 
+                            domain="[('sync_status', '=', 'synced')]"/>
+                    <filter string="Pending" name="pending" 
+                            domain="[('sync_status', '=', 'pending')]"/>
+                    <filter string="Error" name="error" 
+                            domain="[('sync_status', '=', 'error')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Product" name="product" 
+                                context="{'group_by': 'product_id'}"/>
+                        <filter string="Sync Status" name="status" 
+                                context="{'group_by': 'sync_status'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WooCommerce Product Image Action -->
+        <record id="action_woocommerce_product_image" model="ir.actions.act_window">
+            <field name="name">Product Images</field>
+            <field name="res_model">woocommerce.product.image</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_woocommerce_product_image_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No product images found!
+                </p>
+                <p>
+                    Images can be added to WooCommerce products for better presentation.
+                </p>
+            </field>
+        </record>
+
+        <!-- Bulk Sync Server Action -->
+        <record id="action_bulk_sync_images" model="ir.actions.server">
+            <field name="name">Bulk Sync Selected Images</field>
+            <field name="model_id" ref="model_woocommerce_product_image"/>
+            <field name="binding_model_id" ref="model_woocommerce_product_image"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    action = records.action_bulk_sync_to_woocommerce()
+else:
+    action = {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {'title': 'No images selected', 'message': 'Please select images to sync.', 'type': 'warning'}}
+            </field>
+        </record>
+
+    </data>
+</odoo>
+
+

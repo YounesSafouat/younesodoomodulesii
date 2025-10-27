@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- WooCommerce Product Tree View -->
+        <record id="view_woocommerce_product_tree" model="ir.ui.view">
+            <field name="name">woocommerce.product.tree</field>
+            <field name="model">woocommerce.product</field>
+            <field name="arch" type="xml">
+                <list string="WooCommerce Products">
+                    <field name="wc_product_id"/>
+                    <field name="name"/>
+                    <field name="wc_sku"/>
+                    <field name="connection_id"/>
+                    <field name="price"/>
+                    <field name="stock_status" widget="badge"
+                           decoration-success="stock_status == 'instock'"
+                           decoration-danger="stock_status == 'outofstock'"
+                           decoration-warning="stock_status == 'onbackorder'"/>
+                    <field name="sync_status" widget="badge"
+                           decoration-success="sync_status == 'synced'"
+                           decoration-warning="sync_status == 'pending'"
+                           decoration-danger="sync_status == 'error'"/>
+                    <field name="odoo_product_id"/>
+                    <field name="last_sync"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WooCommerce Product Form View -->
+        <record id="view_woocommerce_product_form" model="ir.ui.view">
+            <field name="name">woocommerce.product.form</field>
+            <field name="model">woocommerce.product</field>
+            <field name="arch" type="xml">
+                <form string="WooCommerce Product">
+                    <header>
+                        <button name="action_create_odoo_product" type="object" 
+                                string="Create Odoo Product" 
+                                class="btn-primary" 
+                                invisible="odoo_product_id"
+                                confirm="Create a new Odoo product from this WooCommerce product?"/>
+                        <button name="action_sync_from_woocommerce" type="object" 
+                                string="Pull from WooCommerce" 
+                                class="btn-success"
+                                confirm="Update this product with data from WooCommerce? This will overwrite local changes."/>
+                        <button name="action_sync_to_woocommerce" type="object" 
+                                string="Push to WooCommerce" 
+                                class="btn-warning"
+                                confirm="Update this product on WooCommerce with your local changes?"/>
+                        <field name="sync_status" widget="statusbar" statusbar_visible="pending,synced,error"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_create_odoo_product" type="object" 
+                                    class="oe_stat_button" icon="fa-plus"
+                                    invisible="odoo_product_id">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">Create</span>
+                                    <span class="o_stat_text">Odoo Product</span>
+                                </div>
+                            </button>
+                            <button name="action_view_odoo_product" type="object" 
+                                    class="oe_stat_button" icon="fa-external-link"
+                                    invisible="not odoo_product_id">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">View</span>
+                                    <span class="o_stat_text">Odoo Product</span>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name"/>
+                            </h1>
+                        </div>
+                        
+                        <group string="WooCommerce Store Settings">
+                            <group>
+                                <field name="connection_id" 
+                                       string="WooCommerce Store" 
+                                       required="1"
+                                       placeholder="Select your WooCommerce store..."
+                                       help="Choose which WooCommerce store this product belongs to"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Product Information">
+                            <group>
+                                <field name="wc_product_id"/>
+                                <field name="wc_sku"/>
+                                <field name="odoo_product_id" 
+                                       string="Linked Odoo Product"
+                                       placeholder="Will be auto-created if left empty..."
+                                       help="Leave empty to auto-create an Odoo product, or select an existing one"/>
+                            </group>
+                            <group>
+                                <field name="stock_status"/>
+                                <field name="status"/>
+                                <field name="featured"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Pricing">
+                            <group>
+                                <field name="price"/>
+                                <field name="regular_price"/>
+                                <field name="sale_price"/>
+                            </group>
+                            <group>
+                                <field name="last_sync" readonly="1"/>
+                                <field name="sync_error" readonly="1" 
+                                       invisible="not sync_error"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Categories" name="categories">
+                                <group>
+                                    <field name="category_ids" widget="many2many_tags" 
+                                           options="{'no_create': True}"
+                                           help="Select WooCommerce categories for this product"/>
+                                </group>
+                                <group string="Raw Categories Data" invisible="not categories">
+                                    <field name="categories" readonly="1" widget="text"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Attributes" name="attributes">
+                                <group>
+                                    <field name="attributes" readonly="1" widget="text"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Images" name="images">
+                                <group string="WooCommerce Media">
+                                    <field
+                                        name="product_image_ids"
+                                        class="o_website_sale_image_list"
+                                        context="{'default_name': name, 'default_product_id': id}"
+                                        mode="kanban"
+                                        add-label="Add Media"
+                                        nolabel="1"
+                                        widget="x2_many_media_viewer"
+                                        options="{'convert_to_webp': True}"
+                                        colspan="2"
+                                    />
+                                </group>
+                                
+                                <group string="Raw Images Data" invisible="not images">
+                                    <field name="images" readonly="1" widget="text"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Raw Data" name="raw_data">
+                                <group>
+                                    <field name="wc_data_formatted" readonly="1" widget="text" 
+                                           style="font-family: monospace; font-size: 12px; white-space: pre;"
+                                           help="Formatted JSON data from WooCommerce (read-only)"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WooCommerce Product Search View -->
+        <record id="view_woocommerce_product_search" model="ir.ui.view">
+            <field name="name">woocommerce.product.search</field>
+            <field name="model">woocommerce.product</field>
+            <field name="arch" type="xml">
+                <search string="WooCommerce Products">
+                    <field name="name"/>
+                    <field name="wc_sku"/>
+                    <field name="wc_product_id"/>
+                    <field name="connection_id"/>
+                    <filter string="In Stock" name="instock" domain="[('stock_status', '=', 'instock')]"/>
+                    <filter string="Out of Stock" name="outofstock" domain="[('stock_status', '=', 'outofstock')]"/>
+                    <filter string="Featured" name="featured" domain="[('featured', '=', True)]"/>
+                    <filter string="Synced" name="synced" domain="[('sync_status', '=', 'synced')]"/>
+                    <filter string="Pending" name="pending" domain="[('sync_status', '=', 'pending')]"/>
+                    <filter string="Error" name="error" domain="[('sync_status', '=', 'error')]"/>
+                    <separator/>
+                    <filter string="With Odoo Product" name="with_odoo" domain="[('odoo_product_id', '!=', False)]"/>
+                    <filter string="Without Odoo Product" name="without_odoo" domain="[('odoo_product_id', '=', False)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Connection" name="group_connection" context="{'group_by': 'connection_id'}"/>
+                        <filter string="Stock Status" name="group_stock" context="{'group_by': 'stock_status'}"/>
+                        <filter string="Sync Status" name="group_sync" context="{'group_by': 'sync_status'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WooCommerce Product Action -->
+        <record id="action_woocommerce_product" model="ir.actions.act_window">
+            <field name="name">WooCommerce Products</field>
+            <field name="res_model">woocommerce.product</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_woocommerce_product_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Import your first WooCommerce products!
+                </p>
+                <p>
+                    Go to WooCommerce Connections to import products from your store.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Odoo to WooCommerce Import Wizard Form View -->
+        <record id="view_odoo_to_woocommerce_wizard_form" model="ir.ui.view">
+            <field name="name">odoo.to.woocommerce.wizard.form</field>
+            <field name="model">odoo.to.woocommerce.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Import Odoo Products to WooCommerce">
+                    <header>
+                        <field name="import_status" widget="statusbar" statusbar_visible="draft,running,completed"/>
+                    </header>
+                    
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>Import Odoo Products to WooCommerce</h1>
+                        </div>
+                        
+                        <group string="Connection Settings">
+                            <group>
+                                <field name="connection_id" required="1"/>
+                                <button name="action_test_connection" type="object" 
+                                        string="Test Connection" class="btn-link" icon="fa-plug"
+                                        invisible="import_status != 'draft'"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Import Settings">
+                            <group>
+                                <field name="import_limit" help="Set to 0 for no limit"/>
+                                <field name="batch_size" help="Products per batch (recommended: 10-50)"/>
+                            </group>
+                            <group>
+                                <field name="include_images"/>
+                                <field name="overwrite_existing"/>
+                            </group>
+                        </group>
+                        
+                        <separator string="Product Selection"/>
+                        
+                        <group>
+                            <field name="product_domain" 
+                                   invisible="selected_product_ids"
+                                   help="Domain to filter products (e.g., [('sale_ok', '=', True), ('list_price', '>', 0)])"/>
+                        </group>
+                        
+                        <group string="OR Select Specific Products">
+                            <field name="selected_product_ids" 
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   help="Leave empty to import based on filter above"/>
+                        </group>
+                        
+                        <group string="Import Progress" invisible="import_status == 'draft'">
+                            <group>
+                                <label for="progress_percentage" string="Progress"/>
+                                <div class="o_row">
+                                    <field name="progress_percentage" widget="progressbar"/>
+                                    <span class="ml-2">
+                                        <field name="imported_count" readonly="1"/> / 
+                                        <field name="total_products" readonly="1"/> imported
+                                    </span>
+                                </div>
+                            </group>
+                            <group>
+                                <field name="error_count" readonly="1"/>
+                            </group>
+                        </group>
+                        
+                        <notebook invisible="import_status == 'draft'">
+                            <page string="Import Log">
+                                <field name="import_log" readonly="1" widget="text" nolabel="1"
+                                       style="font-family: monospace; font-size: 12px; white-space: pre; height: 400px;"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    
+                    <footer>
+                        <button name="action_import_products" type="object" 
+                                string="Start Export to WooCommerce" 
+                                class="btn-primary"
+                                invisible="import_status != 'draft'"
+                                confirm="Are you sure you want to export Odoo products to WooCommerce? This will upload products according to your settings."/>
+                        <button name="action_refresh_status" type="object" 
+                                string="Refresh Status" 
+                                class="btn-success" 
+                                icon="fa-refresh"
+                                invisible="import_status != 'running'"/>
+                        <button name="action_view_imported_products" type="object" 
+                                string="View Exported Products" 
+                                class="btn-success"
+                                invisible="import_status == 'draft'"/>
+                        <button string="Close" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <!-- Odoo to WooCommerce Import Wizard Action -->
+        <record id="action_odoo_to_woocommerce_wizard" model="ir.actions.act_window">
+            <field name="name">Import Odoo Products to WooCommerce</field>
+            <field name="res_model">odoo.to.woocommerce.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">current</field>
+            <field name="context">{}</field>
+        </record>
+
+    </data>
+</odoo>

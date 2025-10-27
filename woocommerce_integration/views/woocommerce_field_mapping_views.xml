@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- WooCommerce Field Mapping Tree View -->
+        <record id="view_woocommerce_field_mapping_tree" model="ir.ui.view">
+            <field name="name">woocommerce.field.mapping.tree</field>
+            <field name="model">woocommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <list string="Field Mappings" default_order="sequence,name" multi_edit="1">
+                    <header>
+                        <button name="action_test_mapping" type="object" 
+                                string="Test Selected Mappings" 
+                                class="btn-info"
+                                icon="fa-flask"/>
+                    </header>
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="connection_id" optional="hide"/>
+                    <field name="mapping_direction" widget="badge"
+                           decoration-info="mapping_direction == 'wc_to_odoo'"
+                           decoration-success="mapping_direction == 'odoo_to_wc'"
+                           decoration-primary="mapping_direction == 'bidirectional'"/>
+                    <field name="wc_field_name"/>
+                    <field name="wc_field_label" optional="hide"/>
+                    <field name="odoo_field_name"/>
+                    <field name="odoo_field_label" optional="hide"/>
+                    <field name="field_type" widget="badge" optional="hide"/>
+                    <field name="transform_function" widget="badge" optional="hide"
+                           decoration-muted="transform_function == 'none'"
+                           decoration-info="transform_function == 'normalize_choice'"
+                           decoration-warning="transform_function == 'custom'"/>
+                    <field name="is_required" widget="boolean_toggle" optional="hide"/>
+                    <field name="is_active" widget="boolean_toggle"/>
+                    <field name="notes" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WooCommerce Field Mapping Form View -->
+        <record id="view_woocommerce_field_mapping_form" model="ir.ui.view">
+            <field name="name">woocommerce.field.mapping.form</field>
+            <field name="model">woocommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <form string="Field Mapping">
+                    <header>
+                        <button name="action_test_mapping" type="object" 
+                                string="Test This Mapping" 
+                                class="btn-info"
+                                icon="fa-flask"
+                                help="Test this field mapping with sample data"/>
+                        <field name="is_active" widget="boolean_button" options="{'terminology': 'active'}"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="e.g., Product Name Mapping"/>
+                            </h1>
+                        </div>
+                        
+                        <group string="Configuration">
+                            <group string="Basic Settings">
+                                <field name="connection_id" readonly="1"/>
+                                <field name="mapping_direction" widget="radio"/>
+                                <field name="field_type"/>
+                                <field name="is_active"/>
+                            </group>
+                            <group string="Advanced Options">
+                                <field name="is_required"/>
+                                <field name="sequence"/>
+                                <field name="default_value" placeholder="Default value if WooCommerce field is empty"/>
+                                <field name="condition_domain" placeholder="e.g., [('status', '=', 'publish')]"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Field Selection">
+                            <group string="WooCommerce Field">
+                                <field name="wc_field_name" widget="selection_search" 
+                                       placeholder="Select WooCommerce field..."
+                                       help="Choose the field from WooCommerce to map"/>
+                                <field name="wc_field_label" placeholder="Optional: Custom label for this field"/>
+                            </group>
+                            <group string="Odoo Field">
+                                <field name="odoo_field_name" widget="selection_search"
+                                       placeholder="Select Odoo field..."
+                                       help="Choose the field in Odoo to map to"/>
+                                <field name="odoo_field_label" placeholder="Optional: Custom label for this field"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Data Transformation" name="transformation">
+                                <group>
+                                    <group string="Transform Function">
+                                        <field name="transform_function" widget="radio"/>
+                                        <field name="transform_value" 
+                                               invisible="transform_function not in ['multiply', 'divide', 'round']"
+                                               placeholder="e.g., 2 for multiply by 2"/>
+                                    </group>
+                                    <group string="Transform Info">
+                                        <div class="alert alert-info" role="alert">
+                                            <strong>Transform Functions:</strong><br/>
+                                            • <strong>Normalize Choice:</strong> Removes accents and converts to lowercase (useful for selection fields)<br/>
+                                            • <strong>Uppercase/Lowercase/Title:</strong> Changes text case<br/>
+                                            • <strong>Trim:</strong> Removes extra whitespace<br/>
+                                            • <strong>Multiply/Divide/Round:</strong> Numerical operations<br/>
+                                            • <strong>Custom:</strong> Write your own Python function
+                                        </div>
+                                    </group>
+                                </group>
+                                
+                                <group string="Custom Python Function" invisible="transform_function != 'custom'">
+                                    <field name="custom_function" widget="code" 
+                                           options="{'language': 'python'}"
+                                           placeholder="def transform(value):&#10;    # Use 'value' as input&#10;    # Example: return True if value == 'publish' else False&#10;    return value"
+                                           nolabel="1"/>
+                                </group>
+                            </page>
+                        </notebook>
+                        
+                        <group string="Additional Information">
+                            <field name="notes" nolabel="1" placeholder="Additional notes about this mapping..."/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WooCommerce Field Mapping Search View -->
+        <record id="view_woocommerce_field_mapping_search" model="ir.ui.view">
+            <field name="name">woocommerce.field.mapping.search</field>
+            <field name="model">woocommerce.field.mapping</field>
+            <field name="arch" type="xml">
+                <search string="Field Mappings">
+                    <field name="name"/>
+                    <field name="wc_field_name"/>
+                    <field name="odoo_field_name"/>
+                    <field name="connection_id"/>
+                    
+                    <filter string="Active" name="active" domain="[('is_active', '=', True)]"/>
+                    <filter string="Required" name="required" domain="[('is_required', '=', True)]"/>
+                    
+                    <separator/>
+                    <filter string="WooCommerce → Odoo" name="wc_to_odoo" domain="[('mapping_direction', '=', 'wc_to_odoo')]"/>
+                    <filter string="Odoo → WooCommerce" name="odoo_to_wc" domain="[('mapping_direction', '=', 'odoo_to_wc')]"/>
+                    <filter string="Bidirectional" name="bidirectional" domain="[('mapping_direction', '=', 'bidirectional')]"/>
+                    
+                    <separator/>
+                    <filter string="With Transformation" name="with_transform" domain="[('transform_function', '!=', 'none')]"/>
+                    <filter string="Custom Functions" name="custom_functions" domain="[('transform_function', '=', 'custom')]"/>
+                    
+                    <group expand="0" string="Group By">
+                        <filter string="Connection" name="group_connection" context="{'group_by': 'connection_id'}"/>
+                        <filter string="Direction" name="group_direction" context="{'group_by': 'mapping_direction'}"/>
+                        <filter string="Field Type" name="group_type" context="{'group_by': 'field_type'}"/>
+                        <filter string="Transformation" name="group_transform" context="{'group_by': 'transform_function'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WooCommerce Field Mapping Action -->
+        <record id="action_woocommerce_field_mapping" model="ir.actions.act_window">
+            <field name="name">Field Mappings</field>
+            <field name="res_model">woocommerce.field.mapping</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'search_default_active': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create field mappings between WooCommerce and Odoo
+                </p>
+                <p>
+                    Field mappings allow you to synchronize data between WooCommerce and Odoo products.
+                    You can map fields in both directions and apply data transformations.
+                </p>
+            </field>
+        </record>
+
+        <!-- Server Actions for Field Mapping -->
+        <record id="action_create_default_mappings" model="ir.actions.server">
+            <field name="name">Create Default Mappings</field>
+            <field name="model_id" ref="model_woocommerce_field_mapping"/>
+            <field name="binding_model_id" ref="model_woocommerce_field_mapping"/>
+            <field name="binding_view_types">list,form</field>
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    for record in records:
+        record.action_create_default_mappings()
+else:
+    action = {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {'title': 'No mappings selected', 'message': 'Please select mappings to create defaults.', 'type': 'warning'}}
+            </field>
+        </record>
+
+    </data>
+</odoo>

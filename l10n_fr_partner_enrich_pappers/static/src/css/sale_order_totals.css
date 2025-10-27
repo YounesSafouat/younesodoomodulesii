@@ -1,0 +1,16 @@
+.large_totals_group .o_group {
+    font-size: 1.4rem !important;
+    font-weight: 500;
+}
+
+.large_totals_group .o_field_monetary,
+.large_totals_group .o_field_float,
+.large_totals_group .o_field_integer {
+    font-size: 1.5rem !important;
+    font-weight: bold;
+}
+
+.large_totals_group label {
+    font-size: 1.2rem !important;
+    font-weight: 500;
+}

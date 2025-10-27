@@ -1,0 +1,29 @@
+<odoo>
+    <data>
+        <record id="view_order_form_inherit_signature" model="ir.ui.view">
+            <field name="name">sale.order.form.inherit.signature</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='state']" position="before">
+                    <field name="email_state" widget="statusbar" statusbar_visible="draft,sent,exception,cancel,outgoing" invisible="not email_sent"/>
+                    <button name="email_mark_outgoing" type="object" class="oe_stat_button" string="Réessayer" invisible="email_state != 'exception' or not email_sent"/>
+                </xpath>
+                    <xpath expr="//field[@name='partner_id']" position="after">
+                        <field name="email_sent" invisible="not email_sent"/>
+                        <field name="sale_representative_id" options="{'no_create': True, 'no_quick_create': True}" domain="[('is_representative', '=', True)]"/>
+                        <field name="sign_request_id" readonly="1" invisible="sign_request_id == False"/>
+                    <field name="sign_request_state" readonly="1" invisible="sign_request_id == False"/>
+                </xpath>
+
+                <field name="tax_totals"  position="before">
+                    <group>
+                        <field name="amount_without_prime" string="Montant HT hors prime"/>
+                    <field name="amount_ttc_without_prime" string="Montant TTC hors prime" />
+                    </group>
+
+                </field>
+            </field>
+        </record>
+    </data>
+</odoo>

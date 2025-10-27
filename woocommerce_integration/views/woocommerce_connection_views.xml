@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_woocommerce_connection_tree" model="ir.ui.view">
+            <field name="name">woocommerce.connection.tree</field>
+            <field name="model">woocommerce.connection</field>
+            <field name="arch" type="xml">
+                <list string="WooCommerce Connections">
+                    <field name="name"/>
+                    <field name="store_url"/>
+                    <field name="api_version"/>
+                    <field name="connection_status" widget="badge" 
+                           decoration-success="connection_status == 'success'"
+                           decoration-danger="connection_status == 'error'"/>
+                    <field name="total_products"/>
+                    <field name="last_sync"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_woocommerce_connection_form" model="ir.ui.view">
+            <field name="name">woocommerce.connection.form</field>
+            <field name="model">woocommerce.connection</field>
+            <field name="arch" type="xml">
+                <form string="WooCommerce Connection">
+                    <header>
+                        <button name="test_connection" type="object" 
+                                string="Test Connection" 
+                                class="btn-primary" 
+                                invisible="not active"/>
+                        <button name="action_import_products" type="object" 
+                                string="Import from WooCommerce" 
+                                class="btn-success" 
+                                invisible="connection_status != 'success'"
+                                confirm="Do you want to import products from WooCommerce? This will open the import wizard."/>
+                        <button name="action_import_odoo_products" type="object" 
+                                string="Export to WooCommerce" 
+                                class="btn-warning" 
+                                invisible="connection_status != 'success'"
+                                confirm="Do you want to export Odoo products to WooCommerce? This will open the export wizard."/>
+                        <button name="action_import_categories" type="object" 
+                                string="Import Categories" 
+                                class="btn-secondary" 
+                                invisible="connection_status != 'success'"
+                                confirm="Do you want to import categories from WooCommerce?"/>
+                        <field name="connection_status" widget="statusbar" statusbar_visible="not_tested,success,error"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_import_products" type="object" 
+                                    class="oe_stat_button" icon="fa-download"
+                                    invisible="connection_status != 'success'">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_value"><field name="total_products"/></span>
+                                    <span class="o_stat_text">Products</span>
+                                </div>
+                            </button>
+                            <button name="action_create_order_webhook" type="object" 
+                                    class="oe_stat_button" icon="fa-link"
+                                    invisible="connection_status != 'success'">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">Create Order Webhook</span>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Connection Name"/>
+                            </h1>
+                        </div>
+                        
+                        <group>
+                            <group>
+                                <field name="store_url" placeholder="https://yourstore.com"/>
+                                <field name="api_version"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="consumer_key" password="True"/>
+                                <field name="consumer_secret" password="True"/>
+                                <field name="last_sync" readonly="1"/>
+                            </group>
+                        </group>
+                        
+                        <group string="WordPress Authentication (for Media Upload)">
+                            <group>
+                                <field name="wp_username" placeholder="admin"/>
+                                <field name="wp_application_password" password="True" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Default Settings">
+                            <group>
+                                <field name="default_sync_direction"/>
+                                <field name="image_upload_method"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Connection Status" name="status">
+                                <group>
+                                    <field name="connection_error" readonly="1" 
+                                           invisible="not connection_error"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Products" name="products">
+                                <field name="product_ids" readonly="1">
+                                    <list>
+                                        <field name="wc_product_id"/>
+                                        <field name="name"/>
+                                        <field name="wc_sku"/>
+                                        <field name="odoo_product_id"/>
+                                        <field name="sync_status" widget="badge"
+                                               decoration-success="sync_status == 'synced'"
+                                               decoration-warning="sync_status == 'pending'"
+                                               decoration-danger="sync_status == 'error'"/>
+                                        <field name="last_sync"/>
+                                    </list>
+                                </field>
+                            </page>
+                            
+                            <page string="Field Mappings" name="field_mappings">
+                                <div class="row mt16 mb16">
+                                    <div class="col-12">
+                                        <p class="text-muted">Configure how fields are mapped between WooCommerce and Odoo products.</p>
+                                    </div>
+                                </div>
+                                <div class="row mb16">
+                                    <div class="col-12">
+                                        <button name="action_view_field_mappings" type="object" 
+                                                string="Manage Field Mappings" 
+                                                class="btn btn-primary btn-lg me-2"
+                                                icon="fa-cogs"
+                                                help="Open the field mapping configuration"/>
+                                        <button name="action_create_default_mappings" type="object" 
+                                                string="Create Default Mappings" 
+                                                class="btn btn-secondary btn-lg me-2"
+                                                icon="fa-magic"
+                                                confirm="This will create default field mappings for this connection. Any existing default mappings will be skipped. Continue?"
+                                                help="Automatically create standard field mappings"/>
+                                        <button name="action_get_woocommerce_fields" type="object" 
+                                                string="Discover Fields" 
+                                                class="btn btn-info btn-lg"
+                                                icon="fa-refresh"
+                                                invisible="connection_status != 'success'"
+                                                confirm="This will fetch all available fields from your WooCommerce store, including custom attributes. Continue?"
+                                                help="Fetch custom fields and attributes from WooCommerce"/>
+                                    </div>
+                                </div>
+                                <field name="field_mapping_ids" readonly="1">
+                                    <list>
+                                        <field name="name"/>
+                                        <field name="mapping_direction" widget="badge"/>
+                                        <field name="wc_field_name"/>
+                                        <field name="odoo_field_name"/>
+                                        <field name="field_type"/>
+                                        <field name="is_active" widget="boolean_toggle"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WooCommerce Connection Search View -->
+        <record id="view_woocommerce_connection_search" model="ir.ui.view">
+            <field name="name">woocommerce.connection.search</field>
+            <field name="model">woocommerce.connection</field>
+            <field name="arch" type="xml">
+                <search string="WooCommerce Connections">
+                    <field name="name"/>
+                    <field name="store_url"/>
+                    <field name="consumer_key"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Connected" name="connected" domain="[('connection_status', '=', 'success')]"/>
+                    <filter string="Error" name="error" domain="[('connection_status', '=', 'error')]"/>
+                    <separator/>
+                    <filter string="Not Tested" name="not_tested" domain="[('connection_status', '=', 'not_tested')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Connection Status" name="group_status" context="{'group_by': 'connection_status'}"/>
+                        <filter string="API Version" name="group_api_version" context="{'group_by': 'api_version'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WooCommerce Connection Action -->
+        <record id="action_woocommerce_connection" model="ir.actions.act_window">
+            <field name="name">WooCommerce Connections</field>
+            <field name="res_model">woocommerce.connection</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_woocommerce_connection_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first WooCommerce connection!
+                </p>
+                <p>
+                    Configure your WooCommerce store connection to start importing products.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>

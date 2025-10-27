@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Extend Product Template Form View -->
+        <record id="product_template_form_view_woocommerce" model="ir.ui.view">
+            <field name="name">product.template.form.view.woocommerce</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_only_form_view"/>
+            <field name="arch" type="xml">
+                
+                <!-- Add WooCommerce fields in General Information tab for easy access -->
+                <xpath expr="//group[@name='group_general']" position="after">
+                    <group string="WooCommerce Settings" name="woocommerce_quick_settings">
+                        <group>
+                            <field name="wc_sync_enabled" string="🔄 Sync with WooCommerce"/>
+                            <field name="wc_connection_id" 
+                                   string="WooCommerce Store" 
+                                   invisible="not wc_sync_enabled"
+                                   required="wc_sync_enabled"
+                                   placeholder="Select a WooCommerce connection..."
+                                   help="Auto-create this product in WooCommerce when saved"/>
+                        </group>
+                        <group>
+                            <field name="wc_sync_status" 
+                                   widget="badge" 
+                                   readonly="1" 
+                                   invisible="not wc_sync_enabled"/>
+                            <field name="wc_product_id" 
+                                   readonly="1" 
+                                   invisible="not wc_product_id"
+                                   string="WooCommerce ID"/>
+                        </group>
+                    </group>
+                </xpath>
+                
+                <!-- Add WooCommerce tab -->
+                <xpath expr="//notebook" position="inside">
+                    <page string="WooCommerce" name="woocommerce">
+                        
+                        <group>
+                            <group>
+                                <field name="wc_sync_enabled" string="Enable WooCommerce Sync"/>
+                                <field name="wc_sync_status" widget="badge" readonly="1" string="Sync Status"/>
+                            </group>
+                            <group>
+                                <field name="wc_connection_id" string="WooCommerce Connection"/>
+                                <field name="wc_product_id" readonly="1" string="WooCommerce Product ID"/>
+                                <field name="wc_product_url" widget="url" readonly="1" string="WooCommerce URL" invisible="not wc_product_url"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Advanced Settings" invisible="not wc_sync_enabled">
+                            <group>
+                                <field name="wc_auto_sync" string="Auto Sync on Changes"/>
+                                <field name="wc_sync_direction" string="Sync Direction" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="wc_image_sync_enabled" string="Include Images"/>
+                                <field name="wc_last_sync" readonly="1" string="Last Sync"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Error Information" invisible="wc_sync_status != 'error'">
+                            <field name="wc_last_error" readonly="1" widget="text"/>
+                        </group>
+                        
+                        <div class="oe_button_box" name="woocommerce_button_box">
+                            <button name="action_sync_to_woocommerce" type="object" 
+                                    class="oe_stat_button" icon="fa-refresh"
+                                    string="Sync to WooCommerce">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">Sync to</span>
+                                    <span class="o_stat_text">WooCommerce</span>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <group string="Image Management" invisible="not wc_sync_enabled">
+                            <group>
+                                <field name="wc_image_sync_enabled" string="Include Images in Sync"/>
+                            </group>
+                            <group>
+                                <button name="action_view_woocommerce_images" type="object" 
+                                        class="btn btn-primary" 
+                                        string="Manage WooCommerce Images"
+                                        invisible="not wc_product_id">
+                                    <i class="fa fa-images"></i> Go to Image Manager
+                                </button>
+                            </group>
+                        </group>
+                        
+                    </page>
+                </xpath>
+                
+            </field>
+        </record>
+
+        <!-- Extend Product Template Tree View -->
+        <record id="product_template_list_view_woocommerce" model="ir.ui.view">
+            <field name="name">product.template.list.view.woocommerce</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_tree_view"/>
+            <field name="arch" type="xml">
+                
+                <!-- Add WooCommerce columns -->
+                <xpath expr="//field[@name='list_price']" position="after">
+                    <field name="wc_sync_enabled" widget="boolean_toggle" optional="hide" string="WC Sync"/>
+                    <field name="wc_sync_status" widget="badge" optional="hide" string="Status"
+                           decoration-success="wc_sync_status == 'synced'"
+                           decoration-warning="wc_sync_status in ['not_synced', 'pending_update']"
+                           decoration-danger="wc_sync_status in ['error', 'conflict']"/>
+                    <field name="wc_sync_direction" optional="hide" string="Direction"/>
+                    <field name="wc_last_sync" optional="hide" string="Last Sync"/>
+                </xpath>
+                
+            </field>
+        </record>
+
+        <!-- Extend Product Template Search View -->
+        <record id="product_template_search_view_woocommerce" model="ir.ui.view">
+            <field name="name">product.template.search.view.woocommerce</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_search_view"/>
+            <field name="arch" type="xml">
+                
+                <!-- Add WooCommerce filters -->
+                <xpath expr="//filter[@name='filter_to_sell']" position="after">
+                    <separator/>
+                    <filter string="WooCommerce Sync Enabled" name="wc_sync_enabled" domain="[('wc_sync_enabled', '=', True)]"/>
+                    <filter string="WooCommerce Synced" name="wc_synced" domain="[('wc_sync_status', '=', 'synced')]"/>
+                    <filter string="Pending Update" name="wc_pending" domain="[('wc_sync_status', '=', 'pending_update')]"/>
+                    <filter string="Sync Error" name="wc_error" domain="[('wc_sync_status', '=', 'error')]"/>
+                    <filter string="Sync Conflict" name="wc_conflict" domain="[('wc_sync_status', '=', 'conflict')]"/>
+                    <filter string="WooCommerce Products" name="wc_products" domain="[('wc_product_id', '!=', False)]"/>
+                </xpath>
+                
+                
+            </field>
+        </record>
+
+        <!-- Batch Actions for Product Template -->
+        <record id="action_batch_sync_to_woocommerce" model="ir.actions.server">
+            <field name="name">Sync Selected Products to WooCommerce</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="binding_model_id" ref="product.model_product_template"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    action = records.action_batch_sync_to_woocommerce()
+else:
+    action = {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {'title': 'No products selected', 'message': 'Please select products to sync.', 'type': 'warning'}}
+            </field>
+        </record>
+
+        <record id="action_resolve_sync_conflicts" model="ir.actions.server">
+            <field name="name">Resolve Sync Conflicts</field>
+            <field name="model_id" ref="product.model_product_template"/>
+            <field name="binding_model_id" ref="product.model_product_template"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    action = records.action_resolve_sync_conflicts()
+else:
+    action = {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {'title': 'No products selected', 'message': 'Please select products with conflicts.', 'type': 'warning'}}
+            </field>
+        </record>
+
+    </data>
+</odoo>
+

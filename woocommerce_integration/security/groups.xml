@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- WooCommerce User Group -->
+        <record id="group_woocommerce_user" model="res.groups">
+            <field name="name">WooCommerce User</field>
+            <field name="category_id" ref="base.module_category_sales"/>
+            <field name="comment">User can view and manage WooCommerce products and connections.</field>
+        </record>
+        
+        <!-- WooCommerce Manager Group -->
+        <record id="group_woocommerce_manager" model="res.groups">
+            <field name="name">WooCommerce Manager</field>
+            <field name="category_id" ref="base.module_category_sales"/>
+            <field name="implied_ids" eval="[(4, ref('group_woocommerce_user'))]"/>
+            <field name="comment">Manager can configure WooCommerce connections and manage all WooCommerce data.</field>
+        </record>
+        
+    </data>
+</odoo>

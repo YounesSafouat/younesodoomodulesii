@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_inherit_pappers" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.pappers</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form" />
+        <field name="arch" type="xml">
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Partner details" name="partner_details" invisible="not is_company">
+                    <group>
+                        <group string="Identification">
+                            <field name="legal_type_pappers" />
+                            <field name="siren_pappers" />
+                            <field name="company_registry_pappers" />
+                        </group>
+                        <group string="Company Information">
+                            <field name="legal_form_pappers" />
+                            <field name="company_creation_date_pappers" />
+                            <field name="rcs_registration_date_pappers" />
+                            <field name="is_headquarters_pappers" />
+                            <field name="capital_amount_pappers" />
+                            <field name="capital_currency_pappers" />
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Status">
+                            <field name="rcs_status_pappers" />
+                            <field name="company_closed_pappers" />
+                            <field name="closure_date_pappers" invisible="not company_closed_pappers" />
+                            <field name="last_update_date_pappers" />
+                        </group>
+                        <group string="Business Activity">
+                            <field name="workforce_size_pappers" />
+                        </group>
+                    </group>
+                    <separator string="Activity Description"/>
+                    <field name="business_activity_pappers" placeholder="Business Activity Description..." />
+                </page>
+            </xpath>
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="firstname" placeholder="Prénom du dirigeant"/>
+                <field name="lastname" placeholder="Nom de famille du dirigeant"/>
+            </xpath>
+        </field>
+        </record>
+
+    <record id="view_res_partner_filter_inherit_pappers" model="ir.ui.view">
+        <field name="name">res.partner.select.inherit.pappers</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="siret_pappers"/>
+                <field name="siren_pappers"/>
+                <field name="company_registry_pappers"/>
+            </xpath>
+            <xpath expr="//filter[@name='type_company']" position="after">
+                <separator/>
+                <filter string="Headquarters" name="headquarters" domain="[('is_headquarters_pappers', '=', True)]"/>
+                <filter string="Active Companies" name="active_companies" domain="[('company_closed_pappers', '=', False)]"/>
+                <filter string="Closed Companies" name="closed_companies" domain="[('company_closed_pappers', '=', True)]"/>
+            </xpath>
+            <xpath expr="//group" position="inside">
+                <filter string="Legal Type" name="group_legal_type" context="{'group_by': 'legal_type_pappers'}"/>
+                <filter string="Legal Form" name="group_legal_form" context="{'group_by': 'legal_form_pappers'}"/>
+                <filter string="RCS Status" name="group_rcs_status" context="{'group_by': 'rcs_status_pappers'}"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

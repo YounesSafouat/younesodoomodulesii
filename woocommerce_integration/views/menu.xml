@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Main WooCommerce Menu -->
+        <menuitem 
+            id="menu_woocommerce_main" 
+            name="WooCommerce" 
+            sequence="50" 
+            web_icon="woocommerce_integration,static/description/logo.svg"
+        />
+        
+        <!-- WooCommerce Connections Menu -->
+        <menuitem 
+            id="menu_woocommerce_connections" 
+            name="Connections" 
+            parent="menu_woocommerce_main" 
+            action="action_woocommerce_connection" 
+            sequence="10"
+        />
+        
+        <!-- WooCommerce Products Menu -->
+        <menuitem 
+            id="menu_woocommerce_products" 
+            name="WooCommerce Products" 
+            parent="menu_woocommerce_main" 
+            action="action_woocommerce_product" 
+            sequence="20"
+        />
+        
+        <!-- WooCommerce Categories Menu -->
+        <menuitem 
+            id="menu_woocommerce_category" 
+            name="Categories" 
+            parent="menu_woocommerce_main" 
+            action="action_woocommerce_category" 
+            sequence="25"
+        />
+        
+        <!-- WooCommerce Product Images Menu -->
+        <menuitem 
+            id="menu_woocommerce_product_images" 
+            name="Product Images" 
+            parent="menu_woocommerce_main" 
+            action="action_woocommerce_product_image" 
+            sequence="30"
+        />
+        
+        <!-- WooCommerce Field Mappings Menu -->
+        <menuitem 
+            id="menu_woocommerce_field_mappings" 
+            name="Field Mappings" 
+            parent="menu_woocommerce_main" 
+            action="action_woocommerce_field_mapping" 
+            sequence="35"
+        />
+        
+        
+        <!-- Configuration Menu -->
+        <menuitem 
+            id="menu_woocommerce_config" 
+            name="Configuration" 
+            parent="menu_woocommerce_main" 
+            sequence="100"
+            groups="base.group_system"
+        />
+        
+    </data>
+</odoo>

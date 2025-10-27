@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- WooCommerce Category List View -->
+        <record id="view_woocommerce_category_tree" model="ir.ui.view">
+            <field name="name">woocommerce.category.tree</field>
+            <field name="model">woocommerce.category</field>
+            <field name="arch" type="xml">
+                <list string="WooCommerce Categories">
+                    <field name="wc_category_id"/>
+                    <field name="name"/>
+                    <field name="odoo_category_id"/>
+                    <field name="connection_id"/>
+                    <field name="wc_count"/>
+                    <field name="sync_status" widget="badge"
+                           decoration-success="sync_status == 'synced'"
+                           decoration-warning="sync_status == 'pending'"
+                           decoration-danger="sync_status == 'error'"/>
+                    <field name="last_sync"/>
+                    <button name="action_map_to_odoo_category" type="object" 
+                            icon="fa-link" title="Map to Odoo Category"
+                            invisible="odoo_category_id"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- WooCommerce Category Form View -->
+        <record id="view_woocommerce_category_form" model="ir.ui.view">
+            <field name="name">woocommerce.category.form</field>
+            <field name="model">woocommerce.category</field>
+            <field name="arch" type="xml">
+                <form string="WooCommerce Category">
+                    <header>
+                        <button name="action_map_to_odoo_category" type="object" 
+                                string="Map to Odoo Category" 
+                                class="btn-primary"
+                                invisible="odoo_category_id"/>
+                        <button name="action_sync_from_woocommerce" type="object" 
+                                string="Sync from WooCommerce" 
+                                class="btn-secondary"/>
+                        <field name="sync_status" widget="statusbar" statusbar_visible="synced,pending,error"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="wc_category_id"/>
+                                <field name="wc_slug"/>
+                                <field name="connection_id"/>
+                            </group>
+                            <group>
+                                <field name="odoo_category_id"/>
+                                <field name="parent_id"/>
+                                <field name="wc_parent_id"/>
+                                <field name="wc_count"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Description" invisible="not description">
+                            <field name="description" nolabel="1"/>
+                        </group>
+                        
+                        <group string="Image" invisible="not wc_image_url">
+                            <field name="wc_image_url" widget="url"/>
+                        </group>
+                        
+                        <group>
+                            <field name="last_sync" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- WooCommerce Category Search View -->
+        <record id="view_woocommerce_category_search" model="ir.ui.view">
+            <field name="name">woocommerce.category.search</field>
+            <field name="model">woocommerce.category</field>
+            <field name="arch" type="xml">
+                <search string="Search Categories">
+                    <field name="name"/>
+                    <field name="wc_category_id"/>
+                    <field name="odoo_category_id"/>
+                    <field name="connection_id"/>
+                    <filter string="Mapped" name="mapped" 
+                            domain="[('odoo_category_id', '!=', False)]"/>
+                    <filter string="Not Mapped" name="not_mapped" 
+                            domain="[('odoo_category_id', '=', False)]"/>
+                    <filter string="Synced" name="synced" 
+                            domain="[('sync_status', '=', 'synced')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Connection" name="connection" 
+                                context="{'group_by': 'connection_id'}"/>
+                        <filter string="Odoo Category" name="odoo_category" 
+                                context="{'group_by': 'odoo_category_id'}"/>
+                        <filter string="Sync Status" name="status" 
+                                context="{'group_by': 'sync_status'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- WooCommerce Category Action -->
+        <record id="action_woocommerce_category" model="ir.actions.act_window">
+            <field name="name">WooCommerce Categories</field>
+            <field name="res_model">woocommerce.category</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_woocommerce_category_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No WooCommerce categories found!
+                </p>
+                <p>
+                    Import categories from your WooCommerce store to map them to Odoo categories.
+                </p>
+            </field>
+        </record>
+
+        <!-- Bulk Map Categories Server Action -->
+        <record id="action_bulk_map_categories" model="ir.actions.server">
+            <field name="name">Bulk Map Categories</field>
+            <field name="model_id" ref="model_woocommerce_category"/>
+            <field name="binding_model_id" ref="model_woocommerce_category"/>
+            <field name="binding_view_types">list</field>
+            <field name="state">code</field>
+            <field name="code">
+if records:
+    # Get unique connections from selected records
+    connections = records.mapped('connection_id')
+    if len(connections) == 1:
+        # All records from same connection - use bulk mapping
+        wizard = env['woocommerce.category.mapping.wizard'].create({
+            'connection_id': connections[0].id,
+        })
+        action = wizard.action_bulk_map_categories()
+    else:
+        action = {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {'title': 'Multiple Connections', 'message': 'Please select categories from the same connection for bulk mapping.', 'type': 'warning'}}
+else:
+    action = {'type': 'ir.actions.client', 'tag': 'display_notification', 'params': {'title': 'No categories selected', 'message': 'Please select categories to map.', 'type': 'warning'}}
+            </field>
+        </record>
+
+    </data>
+</odoo>
+

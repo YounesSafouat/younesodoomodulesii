@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers" model="ir.ui.view">
+        <field name="name">res.config.settings.form.inherit.partner.enrichment.fr</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='contacts_settings']//block" position="inside">
+                <setting string="Pappers API" help="Enrich French company data using Pappers API"
+                    id="pappers_api_setting">
+                    <field name="module_l10n_fr_partner_enrich_pappers" />
+                    <div class="content-group" invisible="not module_l10n_fr_partner_enrich_pappers">
+                        <div class="row mt16">
+                            <label string="API Key" for="pappers_api_key"
+                                class="col-lg-3 o_light_label" />
+                            <field name="pappers_api_key" password="True" />
+                        </div>
+                        <div class="row mt16">
+                            <label string="API URL" for="pappers_api_url"
+                                class="col-lg-3 o_light_label" />
+                            <field name="pappers_api_url" placeholder="https://api.pappers.fr/v2" />
+                        </div>
+                        <div class="row mt16">
+                            <label string="Remaining Credits" for="pappers_api_remaining_credits"
+                                class="col-lg-3 o_light_label" />
+                            <field name="pappers_api_remaining_credits" />
+                        </div>
+                        <div class="mt8">
+                            <a href="https://www.pappers.fr/api" target="_blank" class="o_doc_link">Get Pappers key</a>
+                        </div>
+                        <div class="row mt16">
+                            <label string="Hide Pappers Tab" for="pappers_hide_tab"
+                                class="col-lg-3 o_light_label" />
+                            <field name="pappers_hide_tab" />
+                        </div>
+                        <div class="row mt16">
+                            <label string="Get document" for="pappers_document"
+                                class="col-lg-3 o_light_label" />
+                            <field name="pappers_document" force_save="1"/>
+                        </div>
+                    </div>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

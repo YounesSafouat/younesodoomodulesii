@@ -1,0 +1,249 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* nely_signature
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0+e\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-09-09 16:13+0000\n"
+"PO-Revision-Date: 2025-09-09 16:13+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_res_company
+msgid "Companies"
+msgstr "Sociétés"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_res_partner__condition_terms
+#: model:ir.model.fields,field_description:nely_signature.field_res_users__condition_terms
+#: model_terms:ir.ui.view,arch_db:nely_signature.view_partner_form_inherit_signature
+msgid "Condition Terms"
+msgstr "Conditions générales"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_res_config_settings
+msgid "Config Settings"
+msgstr "Paramètres de configuration"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_res_partner
+msgid "Contact"
+msgstr "Contact"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_mail_compose_message__create_signature_request
+msgid "Create Signature Request"
+msgstr "Créer une demande de signature"
+
+#. module: nely_signature
+#: model:ir.model.fields,help:nely_signature.field_mail_compose_message__create_signature_request
+msgid "Create a signature request along with sending the email"
+msgstr "Créer une demande de signature lors de l'envoi de l'e-mail"
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid "Customer email is required for signature request."
+msgstr "L'e-mail du client est requis pour la demande de signature."
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_mail_compose_message
+msgid "Email composition wizard"
+msgstr "Assistant de composition d'e-mails"
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid "Failed to create combined PDF."
+msgstr "Échec de la création du PDF combiné."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid ""
+"Failed to generate sale order PDF. Please check the report configuration."
+msgstr ""
+"Échec de la génération du PDF de la commande client. Veuillez vérifier la configuration du rapport."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid "Invalid sale order PDF data."
+msgstr "Données PDF de la commande client invalides."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid "Invalid template PDF data."
+msgstr "Données PDF du modèle invalides."
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_res_partner__is_representative
+#: model:ir.model.fields,field_description:nely_signature.field_res_users__is_representative
+msgid "Is Representative"
+msgstr "Est représentant"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_product_product__kwh
+#: model:ir.model.fields,field_description:nely_signature.field_product_template__kwh
+msgid "KWh"
+msgstr "KWh"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_crm_lead
+msgid "Lead/Opportunity"
+msgstr "Piste/opportunité"
+
+#. module: nely_signature
+#: model_terms:ir.ui.view,arch_db:nely_signature.view_res_company_inherit_signature
+#: model_terms:ir.ui.view,arch_db:nely_signature.view_res_config_settings_inherit_signature
+msgid "Nely Settings"
+msgstr "Paramètres Nely"
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid "No responsible user found in the signature template."
+msgstr "Aucun utilisateur responsable trouvé dans le modèle de signature."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid ""
+"Please assign a sale representative with a signature template to this sale "
+"order."
+msgstr ""
+"Veuillez affecter un représentant commercial avec un modèle de signature à cette commande client."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid "Please assign a sale representative with a signature template."
+msgstr "Veuillez affecter un représentant commercial avec un modèle de signature."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/crm_lead.py:0
+msgid "Please provide an email address for the customer"
+msgstr "Veuillez fournir une adresse e-mail pour le client"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_product_template
+msgid "Product"
+msgstr "Produit"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_product_product
+msgid "Product Variant"
+msgstr "Variante de produit"
+
+#. module: nely_signature
+#: model:ir.model.fields,help:nely_signature.field_sale_order__sign_request_id
+msgid "Related signature request for this sale order"
+msgstr "Demande de signature liée à cette commande client"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_res_config_settings__sale_product_id
+msgid "Sale Product"
+msgstr "Produit de vente"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_sale_order__sale_representative_id
+msgid "Sale Representative"
+msgstr "Représentant commercial"
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid ""
+"Sale order report not found or is broken. Please ensure the sale module is "
+"properly installed and the report exists."
+msgstr ""
+"Le rapport de commande client est introuvable ou endommagé. Veuillez vous assurer que le module de vente est correctement installé et que le rapport existe."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid ""
+"Sale order report not found. Please ensure the sale module is properly "
+"installed and the report exists."
+msgstr ""
+"Le rapport de commande client est introuvable. Veuillez vous assurer que le module de vente est correctement installé et que le rapport existe."
+
+#. module: nely_signature
+#: model:ir.model.fields,help:nely_signature.field_sale_order__sale_representative_id
+msgid "Sale representative for this sale order"
+msgstr "Représentant commercial pour cette commande client"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_sale_order
+msgid "Sales Order"
+msgstr "Commande client"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_sale_order__signature
+msgid "Signature"
+msgstr "Signature"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_res_company__signature_product_id
+msgid "Signature Product"
+msgstr "Produit de signature"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_sale_order__sign_request_id
+msgid "Signature Request"
+msgstr "Demande de signature"
+
+#. module: nely_signature
+#: model:ir.model,name:nely_signature.model_sign_request_item
+msgid "Signature Request Item"
+msgstr "Élément de demande de signature"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_sale_order__sign_request_state
+msgid "Signature Status"
+msgstr "Statut de la signature"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_res_partner__sign_template_id
+#: model:ir.model.fields,field_description:nely_signature.field_res_users__sign_template_id
+msgid "Signature Template"
+msgstr "Modèle de signature"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_sale_order__signed_by
+msgid "Signed By"
+msgstr "Signé par"
+
+#. module: nely_signature
+#: model:ir.model.fields,field_description:nely_signature.field_sale_order__signed_on
+msgid "Signed On"
+msgstr "Signé le"
+
+#. module: nely_signature
+#: model:ir.model.fields,help:nely_signature.field_sale_order__sign_request_state
+msgid "Status of the signature request"
+msgstr "Statut de la demande de signature"
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid ""
+"The selected sale representative does not have a signature template with an "
+"attachment."
+msgstr ""
+"Le représentant commercial sélectionné n'a pas de modèle de signature avec une pièce jointe."
+
+#. module: nely_signature
+#. odoo-python
+#: code:addons/nely_signature/models/sale_order.py:0
+msgid "The selected signature template has no attachment."
+msgstr "Le modèle de signature sélectionné n'a pas de pièce jointe."

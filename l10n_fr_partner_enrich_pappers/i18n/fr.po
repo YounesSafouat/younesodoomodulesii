@@ -1,0 +1,307 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* l10n_fr_partner_enrich_pappers
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 17.0+e-20240711\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-04-04 07:26+0000\n"
+"PO-Revision-Date: 2025-04-04 07:26+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers
+msgid "API Key"
+msgstr "Clé API"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers
+msgid "API URL"
+msgstr "URL API"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,help:l10n_fr_partner_enrich_pappers.field_res_config_settings__logo_dev_api_key
+msgid "API key for Logo.dev service to fetch company logos"
+msgstr "Clé API pour Logo.dev pour récupérer les logos des entreprises"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,help:l10n_fr_partner_enrich_pappers.field_res_config_settings__pappers_api_key
+msgid "API key for Pappers service"
+msgstr "Clé API pour Pappers pour récupérer les informations des entreprises"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_res_partner_filter_inherit_pappers
+msgid "Active Companies"
+msgstr "Entreprises actives"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Activity Description"
+msgstr "Description de l'activité"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,help:l10n_fr_partner_enrich_pappers.field_res_config_settings__pappers_api_url
+msgid "Base URL for Pappers API (e.g., https://api.pappers.fr/v2)"
+msgstr "URL de base pour l'API Pappers (e.g., https://api.pappers.fr/v2)"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__business_activity
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__business_activity
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Business Activity"
+msgstr "Activité commerciale"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Business Activity Description..."
+msgstr "Description de l'activité commerciale..."
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__capital_amount
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__capital_amount
+msgid "Capital Amount"
+msgstr "Montant du capital"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__capital_currency
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__capital_currency
+msgid "Capital Currency"
+msgstr "Devise du capital"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_res_partner_filter_inherit_pappers
+msgid "Closed Companies"
+msgstr "Entreprises fermées"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__closure_date
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__closure_date
+msgid "Closure Date"
+msgstr "Date de fermeture"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__company_closed
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__company_closed
+msgid "Company Closed"
+msgstr "Entreprise fermée"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Company Information"
+msgstr "Informations de l'entreprise"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__partner_gid
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__partner_gid
+msgid "Company database ID"
+msgstr "ID de la base de données de l'entreprise"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model,name:l10n_fr_partner_enrich_pappers.model_res_config_settings
+msgid "Config Settings"
+msgstr "Paramètres de configuration"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model,name:l10n_fr_partner_enrich_pappers.model_res_partner
+msgid "Contact"
+msgstr "Contact"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__company_creation_date
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__company_creation_date
+msgid "Creation Date"
+msgstr "Date de création"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers
+msgid "Enrich French company data using Pappers API"
+msgstr "Enrichir les données des entreprises françaises en utilisant l'API Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,help:l10n_fr_partner_enrich_pappers.field_res_config_settings__module_l10n_fr_partner_enrich_pappers
+msgid "Enrich partner data with French company information from Pappers."
+msgstr "Enrichir les données des contacts avec les informations des entreprises françaises provenant de Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_config_settings__module_l10n_fr_partner_enrich_pappers
+msgid "French Company Data Enrichment"
+msgstr "Enrichissement des données des entreprises françaises"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers
+msgid "Get Pappers key"
+msgstr "Obtenir une clé API Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_res_partner_filter_inherit_pappers
+msgid "Headquarters"
+msgstr "Siège social"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Identification"
+msgstr "Identification"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__is_headquarters
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__is_headquarters
+msgid "Is Headquarters"
+msgstr "Est le siège social"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__last_update_date
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__last_update_date
+msgid "Last Update Date"
+msgstr "Date de dernière mise à jour"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields.selection,name:l10n_fr_partner_enrich_pappers.selection__res_partner__legal_type__company
+msgid "Legal Entity"
+msgstr "Entreprise"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__legal_form
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__legal_form
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_res_partner_filter_inherit_pappers
+msgid "Legal Form"
+msgstr "Forme juridique"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Partner details"
+msgstr "Détails"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__legal_type
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__legal_type
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_res_partner_filter_inherit_pappers
+msgid "Legal Type"
+msgstr "Type juridique"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model,name:l10n_fr_partner_enrich_pappers.model_logo_dev_api
+msgid "Logo.dev API Integration"
+msgstr ""
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_config_settings__logo_dev_api_key
+msgid "Logo.dev API Key"
+msgstr ""
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields.selection,name:l10n_fr_partner_enrich_pappers.selection__res_partner__legal_type__person
+msgid "Natural Person"
+msgstr "Personne physique"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers
+msgid "Pappers API"
+msgstr "API Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model,name:l10n_fr_partner_enrich_pappers.model_pappers_api
+msgid "Pappers API Integration"
+msgstr "Intégration de l'API Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_config_settings__pappers_api_key
+msgid "Pappers API Key"
+msgstr "Clé API Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_config_settings__pappers_api_url
+msgid "Pappers API URL"
+msgstr "URL API Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__company_registry
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__company_registry
+msgid "RCS Number"
+msgstr "Numéro RCS"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__rcs_registration_date
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__rcs_registration_date
+msgid "RCS Registration Date"
+msgstr "Date d'inscription RCS"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__rcs_status
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__rcs_status
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_res_partner_filter_inherit_pappers
+msgid "RCS Status"
+msgstr "Statut RCS"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields.selection,name:l10n_fr_partner_enrich_pappers.selection__res_partner__rcs_status__registered
+msgid "Registered"
+msgstr "Inscrit"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_config_settings__pappers_api_remaining_credits
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers
+msgid "Remaining Credits"
+msgstr "Crédits restants"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,help:l10n_fr_partner_enrich_pappers.field_res_config_settings__pappers_api_remaining_credits
+msgid "Remaining credits for Pappers service"
+msgstr "Crédits restants pour le service Pappers"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields.selection,name:l10n_fr_partner_enrich_pappers.selection__res_partner__rcs_status__radiation
+msgid "Removed"
+msgstr "Supprimé"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__siren
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__siren
+msgid "SIREN"
+msgstr "SIREN"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__siret
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__siret
+msgid "SIRET"
+msgstr "SIRET"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Status"
+msgstr "Statut"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_partner_form_inherit_pappers
+msgid "Technical Information"
+msgstr "Informations techniques"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,help:l10n_fr_partner_enrich_pappers.field_res_partner__company_registry
+#: model:ir.model.fields,help:l10n_fr_partner_enrich_pappers.field_res_users__company_registry
+msgid ""
+"The registry number of the company. Use it if it is different from the Tax "
+"ID. It must be unique across all partners of a same country"
+msgstr ""
+"Le numéro d'enregistrement de l'entreprise. Utilisez-le si c'est différent du numéro de TVA. Il doit être unique pour tous les contacts d'un même pays"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields.selection,name:l10n_fr_partner_enrich_pappers.selection__res_partner__rcs_status__unregistered
+msgid "Unregistered"
+msgstr "Non enregistré"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_partner__workforce_size
+#: model:ir.model.fields,field_description:l10n_fr_partner_enrich_pappers.field_res_users__workforce_size
+msgid "Workforce Size"
+msgstr "Taille de la force de travail"
+
+#. module: l10n_fr_partner_enrich_pappers
+#: model_terms:ir.ui.view,arch_db:l10n_fr_partner_enrich_pappers.view_config_settings_form_inherit_l10n_fr_partner_enrich_pappers
+msgid "https://api.pappers.fr/v2"
+msgstr ""
