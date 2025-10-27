@@ -24,6 +24,7 @@ Features:
 """,
     'author': 'NELY',
     'website': 'https://nely.ma',
+    'images': ['static/description/logo.svg'],
     'depends': [
         'base',
         'product',
