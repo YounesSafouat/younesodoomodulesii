@@ -10,9 +10,10 @@ _logger = logging.getLogger(__name__)
 
 class WooCommerceWebhookController(http.Controller):
     
-    @http.route('/woocommerce/webhook/<int:webhook_id>', type='http', auth='public', methods=['POST'], csrf=False)
+    @http.route('/woocommerce/webhook/<int:webhook_id>', type='http', auth='public', methods=['POST', 'GET'], csrf=False)
     def webhook_handler(self, webhook_id, **kwargs):
         """Handle incoming WooCommerce webhooks"""
+        _logger.info(f'Webhook controller called with webhook_id: {webhook_id}')
         try:
             # Get webhook configuration
             webhook = request.env['woocommerce.order.webhook'].browse(webhook_id)
@@ -26,17 +27,28 @@ class WooCommerceWebhookController(http.Controller):
                     _logger.warning(f'Invalid webhook signature for webhook {webhook_id}')
                     return request.make_response('Invalid webhook signature', status=403)
             
+            # Handle GET requests (webhook testing)
+            if request.httprequest.method == 'GET':
+                return request.make_response(
+                    json.dumps({
+                        'status': 'success',
+                        'message': f'Webhook {webhook.name} is active and ready to receive data'
+                    }),
+                    status=200,
+                    headers=[('Content-Type', 'application/json')]
+                )
+            
             # Get webhook data - for type='http', we need to parse JSON manually
             webhook_data = {}
             try:
                 body = request.httprequest.get_data(as_text=True)
-                _logger.info(f'Received raw webhook data: {body[:200]}')
+                _logger.info(f'Received raw webhook data: {body[:200] if body else "No body"}')
                 webhook_data = json.loads(body) if body else {}
             except Exception as e:
                 _logger.error(f'Error parsing webhook data: {e}')
                 return request.make_response('Invalid JSON data', status=400)
             
-            _logger.info(f'Received webhook for {webhook.name}: {webhook_data.get("order", {}).get("id")}')
+            _logger.info(f'Received webhook for {webhook.name}')
             
             # Process webhook data
             result = webhook.process_webhook_data(webhook_data)
