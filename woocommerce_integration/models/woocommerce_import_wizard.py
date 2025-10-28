@@ -9,6 +9,12 @@ class WooCommerceImportWizard(models.TransientModel):
     _name = 'woocommerce.import.wizard'
     _description = 'WooCommerce Import Wizard'
 
+    name = fields.Char(
+        string='Import Name',
+        default='WooCommerce Import',
+        help='Name for this import job'
+    )
+    
     connection_id = fields.Many2one(
         'woocommerce.connection',
         string='Connection',
@@ -102,6 +108,12 @@ class WooCommerceImportWizard(models.TransientModel):
         help='Update existing products with new data from WooCommerce instead of skipping them'
     )
     
+    process_in_background = fields.Boolean(
+        string='Process in Background',
+        default=False,
+        help='Process import in background using scheduled actions (recommended for large imports to avoid timeouts)'
+    )
+    
     state = fields.Selection([
         ('draft', 'Draft'),
         ('importing', 'Importing'),
@@ -161,6 +173,10 @@ class WooCommerceImportWizard(models.TransientModel):
         # Validate batch size
         if self.batch_size > 25:
             raise UserError(_('Batch size cannot exceed 25 products for stability.'))
+        
+        # Check if background processing is requested
+        if self.process_in_background:
+            return self._start_background_import()
         
         try:
             self.write({
@@ -256,6 +272,92 @@ class WooCommerceImportWizard(models.TransientModel):
                     'sticky': True,
                 }
             }
+    
+    def _start_background_import(self):
+        """Start import in background using scheduled action"""
+        self.ensure_one()
+        
+        # Create or update a scheduled action for this import
+        cron_name = f'WooCommerce Import - {self.name}'
+        
+        # Search for existing cron
+        existing_cron = self.env['ir.cron'].search([
+            ('name', '=', cron_name)
+        ], limit=1)
+        
+        if existing_cron:
+            existing_cron.unlink()
+        
+        # Get model ID
+        model_id = self.env['ir.model'].search([('model', '=', 'woocommerce.import.wizard')], limit=1).id
+        
+        # Create new scheduled action
+        cron = self.env['ir.cron'].sudo().create({
+            'name': cron_name,
+            'model_id': model_id,
+            'state': 'code',
+            'code': f'model.browse({self.id})._import_single_batch_in_background()',
+            'interval_number': 1,
+            'interval_type': 'minutes',
+            'active': True,
+            'user_id': self.env.uid,
+        })
+        
+        self.write({
+            'state': 'importing',
+            'log_message': _('Starting background import... Scheduled action created.\n'),
+        })
+        
+        # Start the import immediately by triggering the cron
+        cron.with_context(import_wizard_id=self.id).method_direct_trigger()
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Background Import Started'),
+                'message': _('Import is running in the background. You can check progress by refreshing this view.'),
+                'type': 'success',
+                'sticky': False,
+            }
+        }
+    
+    def _import_single_batch_in_background(self):
+        """Process single batch in background"""
+        self.ensure_one()
+        
+        try:
+            # Check if import is complete
+            if self.batches_completed >= self.total_batches:
+                # Mark as done and unlink cron
+                self.write({
+                    'state': 'done',
+                    'log_message': str(self.log_message or '') + _('\n🎉 All batches completed!'),
+                })
+                
+                # Clean up cron
+                cron_name = f'WooCommerce Import - {self.name}'
+                cron = self.env['ir.cron'].search([('name', '=', cron_name)], limit=1)
+                if cron:
+                    cron.unlink()
+                
+                return
+            
+            # Process current batch
+            self._import_single_batch()
+            
+            # Update batch count
+            self.write({
+                'batches_completed': self.batches_completed + 1,
+                'current_batch': self.current_batch + 1,
+            })
+            
+        except Exception as e:
+            _logger.error(f'Error in background import batch: {str(e)}')
+            self.write({
+                'error_count': self.error_count + 1,
+                'log_message': str(self.log_message or '') + _('\n❌ Batch %d failed: %s') % (self.current_batch, str(e)),
+            })
 
     def _import_products_simple(self):
         """Simplified import process to avoid complex transaction issues"""
