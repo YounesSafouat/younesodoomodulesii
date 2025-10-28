@@ -50,13 +50,20 @@ class WooCommerceWebhookController(http.Controller):
             webhook_data = {}
             try:
                 body = request.httprequest.get_data(as_text=True)
-                _logger.info(f'Received raw webhook data: {body[:200] if body else "No body"}')
-                webhook_data = json.loads(body) if body else {}
-            except Exception as e:
-                _logger.error(f'Error parsing webhook data: {e}')
+                _logger.info(f'Received raw webhook data: {body[:500] if body else "No body"}')
+                if body:
+                    webhook_data = json.loads(body)
+                    _logger.info(f'Successfully parsed JSON data: {list(webhook_data.keys()) if isinstance(webhook_data, dict) else type(webhook_data)}')
+                else:
+                    _logger.warning('No request body received')
+            except json.JSONDecodeError as e:
+                _logger.error(f'Error parsing webhook data as JSON: {e}')
                 return request.make_response('Invalid JSON data', status=400)
+            except Exception as e:
+                _logger.error(f'Unexpected error parsing webhook data: {e}')
+                return request.make_response(f'Error parsing request: {str(e)}', status=400)
             
-            _logger.info(f'Received webhook for {webhook.name}')
+            _logger.info(f'Received webhook for {webhook.name}, data type: {type(webhook_data)}')
             
             # Process webhook data with sudo to bypass access rights
             result = webhook.sudo().process_webhook_data(webhook_data)

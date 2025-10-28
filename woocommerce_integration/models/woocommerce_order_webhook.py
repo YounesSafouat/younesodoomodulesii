@@ -138,11 +138,32 @@ class WooCommerceOrderWebhook(models.Model):
                 'message': 'Processing webhook data...'
             })
             
-            # Extract order data
-            order_data = webhook_data.get('order', webhook_data)
+            # Extract order data - WooCommerce can send the order in different formats
+            # Format 1: {"order": {...}}
+            # Format 2: Direct order object
+            # Format 3: Nested under different keys
+            order_data = None
             
-            if not order_data:
-                raise ValidationError(_('No order data found in webhook'))
+            # Try different common formats
+            if isinstance(webhook_data, dict):
+                order_data = (
+                    webhook_data.get('order') or 
+                    webhook_data.get('data') or
+                    webhook_data  # Use entire payload if it looks like an order
+                )
+            
+            _logger.info(f'Order data extracted: {type(order_data)}, keys: {order_data.keys() if order_data and isinstance(order_data, dict) else "N/A"}')
+            
+            # Validate order data - check if it has common order fields
+            if not order_data or not isinstance(order_data, dict):
+                _logger.error(f'Invalid order data format: {order_data}')
+                raise ValidationError(_('No valid order data found in webhook. Received: %s') % json.dumps(webhook_data)[:200])
+            
+            # Check if this looks like a WooCommerce order
+            has_order_indicators = any(key in order_data for key in ['id', 'line_items', 'billing', 'status', 'total'])
+            if not has_order_indicators:
+                _logger.error(f'Data does not appear to be a WooCommerce order: {order_data.keys()}')
+                raise ValidationError(_('Data does not appear to be a WooCommerce order'))
             
             # Create or update Odoo order
             if self.auto_create_odoo_order:
