@@ -112,11 +112,81 @@ class WooCommerceConnection(models.Model):
         help='Products linked to this WooCommerce connection'
     )
     
+    # Import Progress Fields
+    import_in_progress = fields.Boolean(
+        string='Import In Progress',
+        default=False,
+        help='Indicates if an import is currently running'
+    )
+    
+    import_progress = fields.Float(
+        string='Import Progress (%)',
+        compute='_compute_import_progress',
+        help='Progress of the current import operation'
+    )
+    
+    import_progress_width = fields.Char(
+        string='Progress Bar Width',
+        compute='_compute_import_progress',
+        help='Progress bar width for display'
+    )
+    
+    import_status = fields.Char(
+        string='Import Status',
+        compute='_compute_import_status',
+        help='Current status of the import'
+    )
     
     discovered_wc_fields = fields.Text(
         string='Discovered WooCommerce Fields',
         help='JSON data of discovered WooCommerce fields from the store'
     )
+    
+    @api.depends()
+    def _compute_import_progress(self):
+        """Compute import progress from active import wizard"""
+        for connection in self:
+            progress = 0
+            active_import = self.env['woocommerce.import.wizard'].search([
+                ('connection_id', '=', connection.id),
+                ('state', '=', 'importing')
+            ], order='create_date desc', limit=1)
+            
+            if active_import:
+                # Calculate progress based on imported products, not batches
+                total_to_import = active_import.import_limit if active_import.import_limit > 0 else active_import.total_products
+                if total_to_import > 0:
+                    progress = (active_import.imported_count / total_to_import) * 100
+                elif active_import.total_batches > 0:
+                    # Fallback to batch progress if no product count
+                    progress = (active_import.batches_completed / active_import.total_batches) * 100
+            
+            connection.import_progress = progress
+            connection.import_in_progress = bool(active_import)
+            connection.import_progress_width = f"{progress}%"
+    
+    @api.depends()
+    def _compute_import_status(self):
+        """Compute import status message"""
+        for connection in self:
+            status = ""
+            active_import = self.env['woocommerce.import.wizard'].search([
+                ('connection_id', '=', connection.id),
+                ('state', '=', 'importing')
+            ], order='create_date desc', limit=1)
+            
+            if active_import:
+                total_to_import = active_import.import_limit if active_import.import_limit > 0 else active_import.total_products
+                if active_import.batches_completed < active_import.total_batches and total_to_import > 0:
+                    status = f"Imported: {active_import.imported_count}/{total_to_import} products - Batch {active_import.batches_completed + 1}/{active_import.total_batches} - {active_import.progress_message or 'Processing...'}"
+                elif active_import.total_batches > 0:
+                    status = f"Batch {active_import.batches_completed + 1}/{active_import.total_batches} - {active_import.progress_message or 'Processing...'}"
+                else:
+                    status = "Starting import..."
+            else:
+                status = "No import in progress"
+            
+            connection.import_status = status
     
     @api.depends('store_url', 'consumer_key', 'consumer_secret')
     def _compute_total_products(self):

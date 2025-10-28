@@ -71,6 +71,15 @@
                             </h1>
                         </div>
                         
+                        <!-- Import Progress Section -->
+                        <div class="alert alert-info" invisible="not import_in_progress">
+                            <h4>
+                                <i class="fa fa-spinner fa-spin"/> Import in Progress
+                            </h4>
+                            <p><field name="import_status"/></p>
+                            <p><strong>Progress:</strong> <field name="import_progress"/>% (<field name="import_progress" widget="progressbar"/>)</p>
+                        </div>
+                        
                         <group>
                             <group>
                                 <field name="store_url" placeholder="https://yourstore.com"/>
