@@ -296,7 +296,7 @@ class WooCommerceImportWizard(models.TransientModel):
             'name': cron_name,
             'model_id': model_id,
             'state': 'code',
-            'code': f'model.browse({self.id})._import_single_batch_in_background()',
+            'code': f'env["woocommerce.import.wizard"].browse({self.id})._import_single_batch_in_background()',
             'interval_number': 1,
             'interval_type': 'minutes',
             'active': True,
