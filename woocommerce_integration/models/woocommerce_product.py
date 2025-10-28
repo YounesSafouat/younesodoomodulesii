@@ -584,7 +584,7 @@ class WooCommerceProduct(models.Model):
             image_url = main_image.get('src', '')
             
             if image_url:
-                response = requests.get(image_url, timeout=30)
+                response = requests.get(image_url, timeout=600)  # 10 minutes
                 response.raise_for_status()
                 
                 attachment = self.env['ir.attachment'].create({

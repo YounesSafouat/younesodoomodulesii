@@ -557,7 +557,7 @@ class ProductTemplate(models.Model):
             headers = self.wc_connection_id._get_auth_headers()
             
             # Search for existing attribute
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
             
             if response.status_code == 200:
                 attributes = response.json()
@@ -572,7 +572,7 @@ class ProductTemplate(models.Model):
                     # Attribute exists, check if option exists
                     attr_id = existing_attr['id']
                     terms_url = f"{url}/{attr_id}/terms"
-                    terms_response = requests.get(terms_url, headers=headers, timeout=30)
+                    terms_response = requests.get(terms_url, headers=headers, timeout=600)  # 10 minutes
                     
                     if terms_response.status_code == 200:
                         terms = terms_response.json()
@@ -581,7 +581,7 @@ class ProductTemplate(models.Model):
                         if not existing_term:
                             # Create the term
                             term_data = {'name': option_value}
-                            requests.post(terms_url, headers=headers, json=term_data, timeout=30)
+                            requests.post(terms_url, headers=headers, json=term_data, timeout=600)  # 10 minutes
                             _logger.info(f"Created WooCommerce attribute term: {option_value} for {attr_slug}")
                 else:
                     # Create the attribute
@@ -593,7 +593,7 @@ class ProductTemplate(models.Model):
                         'has_archives': False
                     }
                     
-                    create_response = requests.post(url, headers=headers, json=attr_data, timeout=30)
+                    create_response = requests.post(url, headers=headers, json=attr_data, timeout=600)  # 10 minutes
                     
                     if create_response.status_code == 201:
                         new_attr = create_response.json()

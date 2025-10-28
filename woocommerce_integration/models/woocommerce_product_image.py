@@ -443,7 +443,7 @@ class WooCommerceProductImage(models.Model):
         _logger.info(f"Application Password configured: {'Yes' if connection.wp_application_password else 'No'}")
         
         try:
-            response = requests.post(wp_api_url, headers=headers, data=image_data, timeout=300)  # Increased to 5 minutes
+            response = requests.post(wp_api_url, headers=headers, data=image_data, timeout=600)  # 10 minutes
             
             if response.status_code == 401:
                 _logger.error(f"WordPress authentication failed (401). Check:")
@@ -543,7 +543,7 @@ class WooCommerceProductImage(models.Model):
             raise UserError(_('No WooCommerce image URL available'))
         
         try:
-            response = requests.get(self.wc_image_url, timeout=300)  # Increased to 5 minutes
+            response = requests.get(self.wc_image_url, timeout=600)  # 10 minutes
             response.raise_for_status()
             
             image_data = base64.b64encode(response.content).decode('utf-8')
@@ -614,7 +614,7 @@ class WooCommerceProductImage(models.Model):
                         
                         response = requests.get(
                             image_url, 
-                            timeout=300,  # Increased to 5 minutes
+                            timeout=600,  # 10 minutes
                             stream=True,
                             headers={'User-Agent': 'Odoo-WooCommerce-Integration/1.0'}
                         )

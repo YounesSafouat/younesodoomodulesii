@@ -829,7 +829,7 @@ class WooCommerceImportWizard(models.TransientModel):
             import requests
             import base64
             
-            response = requests.get(image_url, timeout=30)
+            response = requests.get(image_url, timeout=600)  # 10 minutes
             response.raise_for_status()
             
             # Convert to base64

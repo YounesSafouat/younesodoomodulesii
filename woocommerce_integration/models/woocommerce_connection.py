@@ -244,7 +244,7 @@ class WooCommerceConnection(models.Model):
             url = self._get_api_url('system_status')
             headers = self._get_auth_headers()
             
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
             response.raise_for_status()
             
             self.connection_status = 'success'
@@ -339,7 +339,7 @@ class WooCommerceConnection(models.Model):
         params.update(include_params)
         
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=300)  # Increased to 5 minutes
+            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -364,7 +364,7 @@ class WooCommerceConnection(models.Model):
         }
         
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=300)  # Increased to 5 minutes
+            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -399,7 +399,7 @@ class WooCommerceConnection(models.Model):
         headers = self._get_auth_headers()
         
         try:
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -419,7 +419,7 @@ class WooCommerceConnection(models.Model):
         }
         
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=300)  # Increased to 5 minutes
+            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -811,7 +811,7 @@ class WooCommerceConnection(models.Model):
         
         try:
             _logger.info(f"Creating WooCommerce product with data: {product_data}")
-            response = requests.post(url, headers=headers, json=product_data, timeout=300)
+            response = requests.post(url, headers=headers, json=product_data, timeout=600)  # 10 minutes
             
             if response.status_code == 400:
                 try:
@@ -824,7 +824,7 @@ class WooCommerceConnection(models.Model):
                         product_data['sku'] = suggested_sku
                         
                         # Retry with the suggested SKU
-                        retry_response = requests.post(url, headers=headers, json=product_data, timeout=60)
+                        retry_response = requests.post(url, headers=headers, json=product_data, timeout=600)  # 10 minutes
                         if retry_response.status_code == 200 or retry_response.status_code == 201:
                             return retry_response.json()
                     
@@ -868,7 +868,7 @@ class WooCommerceConnection(models.Model):
         
         try:
             _logger.info(f"Updating WooCommerce product {product_id} with data: {product_data}")
-            response = requests.put(url, headers=headers, json=product_data, timeout=300)
+            response = requests.put(url, headers=headers, json=product_data, timeout=600)  # 10 minutes
             
             # Log response details for debugging
             _logger.info(f"WooCommerce API Response - Status: {response.status_code}")
@@ -898,7 +898,7 @@ class WooCommerceConnection(models.Model):
         headers = self._get_auth_headers()
         
         try:
-            response = requests.delete(url, headers=headers, timeout=30)
+            response = requests.delete(url, headers=headers, timeout=600)  # 10 minutes
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
