@@ -56,8 +56,8 @@ class WooCommerceWebhookController(http.Controller):
             
             _logger.info(f'Received webhook for {webhook.name}')
             
-            # Process webhook data
-            result = webhook.process_webhook_data(webhook_data)
+            # Process webhook data with sudo to bypass access rights
+            result = webhook.sudo().process_webhook_data(webhook_data)
             
             return request.make_response(
                 json.dumps({

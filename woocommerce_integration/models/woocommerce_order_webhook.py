@@ -220,13 +220,13 @@ class WooCommerceOrderWebhook(models.Model):
             return self.env['res.partner'].search([('is_company', '=', False)], limit=1)
         
         # Search for existing customer
-        customer = self.env['res.partner'].search([
+        customer = self.env['res.partner'].sudo().search([
             ('email', '=', email)
         ], limit=1)
         
         if customer:
             # Update existing customer data
-            customer.write({
+            customer.sudo().write({
                 'name': f"{billing_data.get('first_name', '')} {billing_data.get('last_name', '')}".strip(),
                 'email': email,
                 'phone': billing_data.get('phone', ''),
