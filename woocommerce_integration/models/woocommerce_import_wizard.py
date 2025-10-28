@@ -4,6 +4,8 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
+# WooCommerce Import Wizard for Product Synchronization
+
 
 class WooCommerceImportWizard(models.TransientModel):
     _name = 'woocommerce.import.wizard'
