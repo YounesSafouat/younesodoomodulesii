@@ -174,49 +174,9 @@ class WooCommerceImportWizard(models.TransientModel):
         if self.batch_size > 25:
             raise UserError(_('Batch size cannot exceed 25 products for stability.'))
         
-        # Check if background processing is requested
-        if self.process_in_background:
-            return self._start_background_import()
-        
-        try:
-            self.write({
-                'state': 'importing',
-                'imported_count': 0,
-                'error_count': 0,
-                'current_batch': 1,
-                'batches_completed': 0,
-                'log_message': _('Starting batch import...\n'),
-            })
-            
-            # Process first batch
-            self._import_single_batch()
-            
-            return {
-                'type': 'ir.actions.act_window',
-                'res_model': 'woocommerce.import.wizard',
-                'res_id': self.id,
-                'view_mode': 'form',
-                'target': 'new',
-            }
-            
-        except Exception as e:
-            error_message = str(e)
-            self.write({
-                'state': 'draft',
-                'error_count': self.error_count + 1,
-                'log_message': str(self.log_message or '') + _('\n❌ Import failed: %s') % error_message,
-            })
-            
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Import Failed'),
-                    'message': _('Failed to import products: %s') % error_message,
-                    'type': 'danger',
-                    'sticky': True,
-                }
-            }
+        # Background processing is now always used to prevent timeouts
+        # The cron job will process batches automatically
+        return self._start_background_import()
     
     def action_process_next_batch(self):
         """Process the next batch of products"""
