@@ -49,13 +49,28 @@ class WooCommerceWebhookController(http.Controller):
             # Get webhook data - for type='http', we need to parse JSON manually
             webhook_data = {}
             try:
-                body = request.httprequest.get_data(as_text=True)
-                _logger.info(f'Received raw webhook data: {body[:500] if body else "No body"}')
-                if body:
+                # Get raw bytes first
+                body_bytes = request.httprequest.get_data()
+                _logger.info(f'Received raw body (bytes): {len(body_bytes)} bytes')
+                
+                if body_bytes:
+                    # Convert to string and parse
+                    body = body_bytes.decode('utf-8')
+                    _logger.info(f'Received raw webhook data: {body[:500] if body else "No body"}')
+                    
                     webhook_data = json.loads(body)
                     _logger.info(f'Successfully parsed JSON data: {list(webhook_data.keys()) if isinstance(webhook_data, dict) else type(webhook_data)}')
                 else:
-                    _logger.warning('No request body received')
+                    _logger.warning('No request body received - WooCommerce may be sending an empty request or the webhook is testing')
+                    # For testing purposes, return success with empty data
+                    return request.make_response(
+                        json.dumps({
+                            'status': 'success',
+                            'message': 'Webhook received with no data - this is normal for webhook testing'
+                        }),
+                        status=200,
+                        headers=[('Content-Type', 'application/json')]
+                    )
             except json.JSONDecodeError as e:
                 _logger.error(f'Error parsing webhook data as JSON: {e}')
                 return request.make_response('Invalid JSON data', status=400)
