@@ -113,7 +113,7 @@ class WooCommerceOrderWebhook(models.Model):
             'message': 'Webhook test successful'
         }
         
-        log = self.env['woocommerce.order.webhook.log'].create({
+        log = self.env['woocommerce.order.webhook.log'].sudo().create({
             'webhook_id': self.id,
             'raw_data': json.dumps(test_data),
             'status': 'success',
@@ -136,7 +136,7 @@ class WooCommerceOrderWebhook(models.Model):
         
         try:
             # Log the webhook data
-            log = self.env['woocommerce.order.webhook.log'].create({
+            log = self.env['woocommerce.order.webhook.log'].sudo().create({
                 'webhook_id': self.id,
                 'raw_data': json.dumps(webhook_data),
                 'status': 'processing',
