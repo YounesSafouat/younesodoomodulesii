@@ -81,17 +81,11 @@ class WooCommerceOrderWebhook(models.Model):
         """Compute webhook URL"""
         for webhook in self:
             if webhook.id:
-                # Try to get base URL from request first
-                try:
-                    base_url = self.env['ir.http']._get_default_port()
-                    if not base_url or 'localhost' in base_url:
-                        # If no valid base URL, try to get from config
-                        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
-                except:
-                    base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                # Get base URL from config
+                base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
                 
                 # Fallback to request URL if available
-                if not base_url or 'localhost' in base_url:
+                if not base_url or (isinstance(base_url, str) and 'localhost' in base_url):
                     try:
                         from odoo.http import request
                         if hasattr(request, 'httprequest') and request.httprequest:
@@ -134,6 +128,7 @@ class WooCommerceOrderWebhook(models.Model):
         """Process incoming webhook data and create Odoo order"""
         self.ensure_one()
         
+        log = None
         try:
             # Log the webhook data
             log = self.env['woocommerce.order.webhook.log'].sudo().create({
@@ -165,7 +160,7 @@ class WooCommerceOrderWebhook(models.Model):
             _logger.error(f'Error processing webhook data: {str(e)}')
             
             # Update log with error
-            if 'log' in locals():
+            if log:
                 log.write({
                     'status': 'error',
                     'message': f'Error: {str(e)}'
