@@ -77,7 +77,7 @@
                                 <i class="fa fa-spinner fa-spin"/> Import in Progress
                             </h4>
                             <p><field name="import_status"/></p>
-                            <p><strong>Progress:</strong> <field name="import_progress"/>% (<field name="import_progress" widget="progressbar"/>)</p>
+                            <p><strong>Progress:</strong> <field name="import_progress" widget="progressbar"/></p>
                         </div>
                         
                         <group>

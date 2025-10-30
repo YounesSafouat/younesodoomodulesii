@@ -137,52 +137,50 @@ class WooCommerceConnection(models.Model):
         help='Current status of the import'
     )
     
+    # Background import tracking (persisted on connection record)
+    import_in_progress_persisted = fields.Boolean(
+        string='Import In Progress (Persisted)',
+        default=False,
+        help='Indicates if import is currently running (persisted)'
+    )
+    
+    import_progress_count_persisted = fields.Integer(
+        string='Import Progress Count',
+        default=0,
+        help='Number of products imported so far (persisted)'
+    )
+    
+    import_total_count_persisted = fields.Integer(
+        string='Import Total Count',
+        default=0,
+        help='Total number of products to import (persisted)'
+    )
+    
     discovered_wc_fields = fields.Text(
         string='Discovered WooCommerce Fields',
         help='JSON data of discovered WooCommerce fields from the store'
     )
     
-    @api.depends()
+    @api.depends('import_progress_count_persisted', 'import_total_count_persisted', 'import_in_progress_persisted')
     def _compute_import_progress(self):
-        """Compute import progress from active import wizard"""
+        """Compute import progress from persisted fields"""
         for connection in self:
             progress = 0
-            active_import = self.env['woocommerce.import.wizard'].search([
-                ('connection_id', '=', connection.id),
-                ('state', '=', 'importing')
-            ], order='create_date desc', limit=1)
-            
-            if active_import:
-                # Calculate progress based on imported products, not batches
-                total_to_import = active_import.import_limit if active_import.import_limit > 0 else active_import.total_products
-                if total_to_import > 0:
-                    progress = (active_import.imported_count / total_to_import) * 100
-                elif active_import.total_batches > 0:
-                    # Fallback to batch progress if no product count
-                    progress = (active_import.batches_completed / active_import.total_batches) * 100
+            if connection.import_total_count_persisted > 0:
+                progress = (connection.import_progress_count_persisted / connection.import_total_count_persisted) * 100
             
             connection.import_progress = progress
-            connection.import_in_progress = bool(active_import)
+            connection.import_in_progress = connection.import_in_progress_persisted
             connection.import_progress_width = f"{progress}%"
     
-    @api.depends()
+    @api.depends('import_progress_count_persisted', 'import_total_count_persisted', 'import_in_progress_persisted')
     def _compute_import_status(self):
-        """Compute import status message"""
+        """Compute import status message from persisted fields"""
         for connection in self:
-            status = ""
-            active_import = self.env['woocommerce.import.wizard'].search([
-                ('connection_id', '=', connection.id),
-                ('state', '=', 'importing')
-            ], order='create_date desc', limit=1)
-            
-            if active_import:
-                total_to_import = active_import.import_limit if active_import.import_limit > 0 else active_import.total_products
-                if active_import.batches_completed < active_import.total_batches and total_to_import > 0:
-                    status = f"Imported: {active_import.imported_count}/{total_to_import} products - Batch {active_import.batches_completed + 1}/{active_import.total_batches} - {active_import.progress_message or 'Processing...'}"
-                elif active_import.total_batches > 0:
-                    status = f"Batch {active_import.batches_completed + 1}/{active_import.total_batches} - {active_import.progress_message or 'Processing...'}"
-                else:
-                    status = "Starting import..."
+            if connection.import_in_progress_persisted and connection.import_total_count_persisted > 0:
+                total = connection.import_total_count_persisted
+                imported = connection.import_progress_count_persisted
+                status = f"Imported: {imported}/{total} products - Processing..."
             else:
                 status = "No import in progress"
             

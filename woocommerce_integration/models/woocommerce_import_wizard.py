@@ -254,6 +254,15 @@ class WooCommerceImportWizard(models.TransientModel):
         """Start import in background using scheduled action"""
         self.ensure_one()
         
+        # Initialize progress on connection record (persisted, not transient)
+        total_to_import = self.import_limit if self.import_limit > 0 else self.total_products
+        self.connection_id.write({
+            'import_in_progress_persisted': True,
+            'import_progress_count_persisted': 0,
+            'import_total_count_persisted': total_to_import,
+        })
+        self.env.cr.commit()
+        
         # First, update the state
         try:
             self.write({
@@ -314,6 +323,12 @@ class WooCommerceImportWizard(models.TransientModel):
         try:
             # Check if import is complete
             if self.batches_completed >= self.total_batches:
+                # Reset import state on connection
+                self.connection_id.write({
+                    'import_in_progress_persisted': False,
+                })
+                self.env.cr.commit()
+                
                 # Mark as done and unlink cron
                 self.write({
                     'state': 'done',
@@ -351,13 +366,18 @@ class WooCommerceImportWizard(models.TransientModel):
             # Process current batch
             self._import_single_batch()
             
-            # Update batch count and commit to avoid lock issues
+            # Update progress on connection record (persisted, not transient)
+            self.connection_id.write({
+                'import_progress_count_persisted': self.imported_count,
+                'import_total_count_persisted': self.import_limit if self.import_limit > 0 else self.total_products,
+            })
+            self.env.cr.commit()
+            
+            # Update batch count (for logging)
             self.write({
                 'batches_completed': self.batches_completed + 1,
                 'current_batch': self.current_batch + 1,
             })
-            
-            # Commit to persist changes
             self.env.cr.commit()
             
         except Exception as e:
