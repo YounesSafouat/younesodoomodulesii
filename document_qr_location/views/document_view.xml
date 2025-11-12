@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="document_view_form_inherit_qr_location" model="ir.ui.view">
+        <field name="name">documents.document.form.inherit.qr.location</field>
+        <field name="model">documents.document</field>
+        <field name="inherit_id" ref="documents.document_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='folder_id']" position="after">
+                <field name="x_archive_location" string="Archive Placement" 
+                       placeholder="Extracted from QR code"
+                       readonly="is_locked"
+                       help="Archive location automatically extracted from QR code at the bottom of the document"/>
+            </xpath>
+            <!-- Add button to manually extract QR code -->
+            <xpath expr="//header" position="inside">
+                <button name="action_extract_qr_code" string="Extract QR Code" 
+                        type="object" class="btn-secondary" 
+                        invisible="type != 'binary' or not raw"
+                        help="Manually extract QR code from document"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
+

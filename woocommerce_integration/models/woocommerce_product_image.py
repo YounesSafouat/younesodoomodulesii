@@ -131,6 +131,28 @@ class WooCommerceProductImage(models.Model):
         
         return records
     
+    def read(self, fields=None, load='_classic_read'):
+        """Override read to trigger lazy loading of images if needed"""
+        result = super().read(fields=fields, load=load)
+        
+        # If image_1920 is being read and it's empty, try lazy loading
+        if fields is None or 'image_1920' in fields:
+            for record in self:
+                if not record.image_1920 and record.wc_image_url and record.sync_status == 'pending':
+                    try:
+                        record._lazy_load_image()
+                        # Re-read to get the updated image
+                        updated = record.read(['image_1920'])
+                        if updated and updated[0].get('image_1920'):
+                            # Update the result with the loaded image
+                            for res in result:
+                                if res.get('id') == record.id:
+                                    res['image_1920'] = updated[0]['image_1920']
+                    except Exception as e:
+                        _logger.warning(f"Error lazy loading image during read: {e}")
+        
+        return result
+    
     def write(self, vals):
         """Override write to trigger sync on changes and handle main image logic"""
         if not self.env.context.get('skip_logging'):
@@ -581,9 +603,52 @@ class WooCommerceProductImage(models.Model):
                 }
             }
     
+    def _lazy_load_image(self):
+        """Lazy load image from URL if not already downloaded"""
+        if self.image_1920:
+            return  # Already downloaded
+        
+        if not self.wc_image_url:
+            _logger.warning(f"No image URL available for {self.name}")
+            return
+        
+        try:
+            _logger.info(f"Lazy loading image: {self.name} from {self.wc_image_url}")
+            response = requests.get(
+                self.wc_image_url,
+                timeout=600,  # 10 minutes
+                stream=True,
+                headers={'User-Agent': 'Odoo-WooCommerce-Integration/1.0'}
+            )
+            response.raise_for_status()
+            
+            content_length = response.headers.get('content-length')
+            if content_length and int(content_length) > 10 * 1024 * 1024:
+                _logger.warning(f"Image too large ({int(content_length) / 1024 / 1024:.2f} MB): {self.wc_image_url}")
+                self.sync_status = 'error'
+                self.sync_error = f"Image too large: {int(content_length) / 1024 / 1024:.2f} MB"
+                return
+            
+            image_data = base64.b64encode(response.content).decode('utf-8')
+            self.image_1920 = image_data
+            self.sync_status = 'synced'
+            self.sync_error = False
+            _logger.info(f"Successfully lazy loaded image: {self.name}")
+            
+        except Exception as e:
+            _logger.warning(f"Error lazy loading image {self.name}: {e}")
+            self.sync_status = 'error'
+            self.sync_error = str(e)
+    
     @api.model
-    def create_from_woocommerce_data(self, wc_image_data, product_id):
-        """Create image record from WooCommerce data"""
+    def create_from_woocommerce_data(self, wc_image_data, product_id, download_image=True):
+        """Create image record from WooCommerce data
+        
+        Args:
+            wc_image_data: Dictionary containing WooCommerce image data
+            product_id: ID of the WooCommerce product
+            download_image: If True, download the image immediately. If False, store only the URL for lazy loading.
+        """
         try:
             product = self.env['woocommerce.product'].browse(product_id)
             sequence = wc_image_data.get('sequence', 10)
@@ -599,11 +664,11 @@ class WooCommerceProductImage(models.Model):
                 'wc_image_id': wc_image_data.get('id'),
                 'wc_image_url': wc_image_data.get('src'),
                 'alt_text': wc_image_data.get('alt'),
-                'sync_status': 'synced',  # Already synced since we're importing FROM WooCommerce
+                'sync_status': 'pending' if not download_image else 'synced',  # Pending if lazy loading
             }
             
             image_url = wc_image_data.get('src')
-            if image_url:
+            if image_url and download_image:
                 max_retries = 3
                 retry_count = 0
                 download_success = False

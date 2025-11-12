@@ -147,6 +147,7 @@ class ProductTemplate(models.Model):
         for product in self:
             if product.wc_sync_enabled and product.wc_connection_id and product.wc_auto_sync:
                 should_sync = False
+                mapped_fields = []
                 
                 # Check standard fields
                 sync_needed = any(key in vals for key in sync_fields)
@@ -160,6 +161,9 @@ class ProductTemplate(models.Model):
                     should_sync = True
                     # Auto-sync images when they change
                     _logger.info(f"Image changed for product {product.name}, triggering auto-sync")
+                    # Create/update WooCommerce product image record if main image changed
+                    if 'image_1920' in vals and product.wc_product_id and product.wc_connection_id:
+                        self._process_product_image_for_sync(product)
                 
                 # Check custom mapped fields (from field mappings)
                 if product.wc_connection_id:
@@ -777,6 +781,47 @@ class ProductTemplate(models.Model):
         """Get or create WooCommerce category ID for Odoo category"""
         self.ensure_one()
         return 1
+    
+    def _process_product_image_for_sync(self, product):
+        """Process product image when it changes - create/update WooCommerce product image"""
+        if not product.image_1920 or not product.wc_product_id or not product.wc_connection_id:
+            return
+        
+        try:
+            # Find the WooCommerce product record
+            wc_product = self.env['woocommerce.product'].search([
+                ('wc_product_id', '=', product.wc_product_id),
+                ('connection_id', '=', product.wc_connection_id.id)
+            ], limit=1)
+            
+            if not wc_product:
+                _logger.warning(f"WooCommerce product record not found for {product.name}")
+                return
+            
+            # Check if main image already exists
+            main_image = wc_product.product_image_ids.filtered(lambda img: img.is_main_image)
+            
+            if main_image:
+                # Update existing main image
+                main_image = main_image[0]
+                main_image.with_context(skip_wc_sync=True).write({
+                    'image_1920': product.image_1920,
+                    'sync_status': 'pending',
+                })
+                _logger.info(f"Updated existing main image for product {product.name}")
+            else:
+                # Create new main image
+                self.env['woocommerce.product.image'].with_context(skip_wc_sync=True).create({
+                    'product_id': wc_product.id,
+                    'image_1920': product.image_1920,
+                    'name': f"{product.name} - Main Image",
+                    'is_main_image': True,
+                    'sequence': 0,
+                    'sync_status': 'pending',
+                })
+                _logger.info(f"Created new main image record for product {product.name}")
+        except Exception as e:
+            _logger.error(f"Error processing product image for sync: {e}")
     
     def action_sync_to_woocommerce(self):
         """Manual sync product to WooCommerce"""

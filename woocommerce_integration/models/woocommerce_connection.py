@@ -161,6 +161,35 @@ class WooCommerceConnection(models.Model):
         help='JSON data of discovered WooCommerce fields from the store'
     )
     
+    # Import wizard tracking (for background processing)
+    # Note: Cannot use Many2one to TransientModel, so we store the ID as integer
+    active_import_wizard_id = fields.Integer(
+        string='Active Import Wizard ID',
+        help='ID of current active import wizard for background processing (stored as integer, not relation)'
+    )
+    
+    import_batch_size = fields.Integer(
+        string='Import Batch Size',
+        default=25,
+        help='Batch size for current import'
+    )
+    
+    import_settings = fields.Text(
+        string='Import Settings',
+        help='JSON settings for current import (categories, images, attributes, etc.)'
+    )
+    
+    import_notification_sent = fields.Boolean(
+        string='Import Notification Sent',
+        default=False,
+        help='Track if completion notification has been sent to avoid duplicates'
+    )
+    
+    import_log = fields.Text(
+        string='Import Log',
+        help='Detailed log of import operations (last 5000 characters)'
+    )
+    
     @api.depends('import_progress_count_persisted', 'import_total_count_persisted', 'import_in_progress_persisted')
     def _compute_import_progress(self):
         """Compute import progress from persisted fields"""
@@ -381,7 +410,7 @@ class WooCommerceConnection(models.Model):
         total_products = int(response.headers.get('X-WP-Total', 0))
         return total_products
     
-    def get_products(self, page=1, per_page=10, **kwargs):
+    def get_products(self, page=1, per_page=100, **kwargs):
         """Get products from WooCommerce with all attributes included"""
         self.ensure_one()
         
@@ -868,6 +897,12 @@ class WooCommerceConnection(models.Model):
         """Create a new product in WooCommerce"""
         self.ensure_one()
         
+        # CRITICAL: Remove 'id' field if present - WooCommerce generates it automatically
+        # Sending an ID for a new product causes "ID non valide" error
+        product_data = product_data.copy()  # Don't modify the original
+        product_data.pop('id', None)
+        product_data.pop('wc_product_id', None)
+        
         # Handle duplicate SKU by making it unique
         if 'sku' in product_data and product_data['sku']:
             original_sku = product_data['sku']
@@ -897,10 +932,16 @@ class WooCommerceConnection(models.Model):
                             return retry_response.json()
                     
                     _logger.error(f"WooCommerce 400 Error during product creation: {error_details}")
-                    raise UserError(_('WooCommerce API Error (400): %s') % str(error_details))
+                    # Parse error to make it more user-friendly
+                    error_message = self._parse_woocommerce_error(error_details)
+                    raise UserError(error_message)
+                except UserError:
+                    raise
                 except:
                     _logger.error(f"WooCommerce 400 Error during product creation: {response.text}")
-                    raise UserError(_('WooCommerce API Error (400): %s') % response.text)
+                    # Try to parse even if JSON parsing failed
+                    error_message = self._parse_woocommerce_error_text(response.text)
+                    raise UserError(error_message)
             
             response.raise_for_status()
             return response.json()
@@ -911,6 +952,17 @@ class WooCommerceConnection(models.Model):
     def update_product(self, product_id, product_data):
         """Update an existing product in WooCommerce"""
         self.ensure_one()
+        
+        # Ensure product_id is an integer (remove commas, spaces, etc.)
+        try:
+            product_id = int(str(product_id).replace(',', '').replace(' ', ''))
+        except (ValueError, TypeError):
+            raise UserError(_('Invalid product ID: %s. Product ID must be a number.') % product_id)
+        
+        # Remove 'id' from product_data if present (not needed in update payload)
+        product_data = product_data.copy()  # Don't modify the original
+        product_data.pop('id', None)
+        product_data.pop('wc_product_id', None)
         
         # Always merge with existing data to prevent overwriting other fields
         try:
@@ -947,10 +999,17 @@ class WooCommerceConnection(models.Model):
                 try:
                     error_details = response.json()
                     _logger.error(f"WooCommerce 400 Error for product {product_id}: {error_details}")
-                    raise UserError(_('WooCommerce API Error (400): %s') % str(error_details))
+                    
+                    # Parse error to make it more user-friendly
+                    error_message = self._parse_woocommerce_error(error_details)
+                    raise UserError(error_message)
+                except UserError:
+                    raise
                 except:
                     _logger.error(f"WooCommerce 400 Error for product {product_id}: {response.text}")
-                    raise UserError(_('WooCommerce API Error (400): %s') % response.text)
+                    # Try to parse even if JSON parsing failed
+                    error_message = self._parse_woocommerce_error_text(response.text)
+                    raise UserError(error_message)
             
             response.raise_for_status()
             return response.json()
@@ -1001,4 +1060,190 @@ class WooCommerceConnection(models.Model):
             'view_mode': 'form',
             'target': 'current',
         }
+    
+    def process_next_import_batch(self):
+        """Process next batch of import - called by cron"""
+        self.ensure_one()
+        
+        _logger.info(f'process_next_import_batch called for connection {self.name}, import_in_progress={self.import_in_progress_persisted}')
+        
+        if not self.import_in_progress_persisted:
+            _logger.info(f'No import in progress for connection {self.name}')
+            return
+        
+        # Try to find the active wizard
+        wizard = None
+        if self.active_import_wizard_id:
+            wizard = self.env['woocommerce.import.wizard'].sudo().browse(self.active_import_wizard_id).exists()
+        
+        # If wizard doesn't exist, try to find it by connection
+        if not wizard:
+            # Search for importing wizard for this connection
+            wizard = self.env['woocommerce.import.wizard'].sudo().search([
+                ('connection_id', '=', self.id),
+                ('state', '=', 'importing')
+            ], order='create_date desc', limit=1)
+            
+            if wizard:
+                self.write({'active_import_wizard_id': wizard.id})
+                self.env.cr.commit()
+        
+        if wizard:
+            # Process the batch using the wizard
+            try:
+                wizard._import_single_batch_in_background()
+            except Exception as e:
+                _logger.error(f'Error processing batch for connection {self.name}: {e}')
+                error_str = str(e).lower()
+                is_concurrency_error = any(term in error_str for term in [
+                    'serialize', 'concurrent update', 'could not serialize',
+                    'current transaction is aborted'
+                ])
+                
+                # Rollback on any error
+                self.env.cr.rollback()
+                
+                # Don't stop import on concurrency errors - let it retry
+                if is_concurrency_error:
+                    _logger.warning(f'Concurrency error in batch processing, will retry: {e}')
+                    return
+                
+                # Update connection to stop import on persistent errors (not concurrency)
+                if 'Record cannot be modified' not in str(e):
+                    try:
+                        # Lock the connection before updating
+                        self.env.cr.execute(
+                            "SELECT id FROM woocommerce_connection WHERE id = %s FOR UPDATE NOWAIT",
+                            (self.id,)
+                        )
+                        self.write({'import_in_progress_persisted': False})
+                        self.env.cr.commit()
+                    except Exception as lock_error:
+                        self.env.cr.rollback()
+                        _logger.warning(f'Could not update connection status: {lock_error}')
+        else:
+            # No wizard found, but import is marked as in progress
+            # Check if we should continue based on progress
+            total_imported = self.import_progress_count_persisted
+            total_to_import = self.import_total_count_persisted
+            
+            if total_imported >= total_to_import:
+                # Import is complete
+                _logger.info(f'Import complete for connection {self.name}: {total_imported}/{total_to_import}')
+                self.write({'import_in_progress_persisted': False})
+                self.env.cr.commit()
+                
+                # Clean up any orphaned crons
+                cron_name_pattern = f'WooCommerce Import - {self.name}%'
+                crons = self.env['ir.cron'].sudo().search([
+                    ('name', 'like', cron_name_pattern)
+                ])
+                if crons:
+                    crons.unlink()
+            else:
+                _logger.warning(f'Import in progress for connection {self.name} but no wizard found. Progress: {total_imported}/{total_to_import}')
+    
+    def action_stop_import(self):
+        """Manually stop a running import"""
+        self.ensure_one()
+        
+        if not self.import_in_progress_persisted:
+            raise UserError(_('No import is currently running.'))
+        
+        # Reset import state
+        self.write({
+            'import_in_progress_persisted': False,
+        })
+        self.env.cr.commit()
+        
+        # Delete the cron job
+        cron_name = f'WooCommerce Import - {self.name}'
+        cron = self.env['ir.cron'].sudo().search([('name', '=', cron_name)], limit=1)
+        if cron:
+            cron.sudo().unlink()
+        
+        # Try to update wizard log if it exists
+        try:
+            wizard = self.env['woocommerce.import.wizard'].browse(self.active_import_wizard_id.id) if self.active_import_wizard_id else False
+            if wizard and wizard.exists():
+                wizard._append_to_connection_log(_('\n⚠️ Import stopped manually by user.'))
+        except Exception as e:
+            _logger.warning(f'Could not update wizard on stop: {e}')
+        
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('Import Stopped'),
+                'message': _('The import has been stopped successfully.'),
+                'type': 'success',
+            }
+        }
+    
+    def _parse_woocommerce_error(self, error_details):
+        """Parse WooCommerce API error and return user-friendly message"""
+        try:
+            # Extract the main error message
+            error_message = error_details.get('message', 'Unknown error')
+            
+            # Check for specific error types
+            error_code = error_details.get('code', '')
+            error_data = error_details.get('data', {})
+            
+            # Handle invalid parameter errors
+            if 'invalid' in error_code.lower() or 'invalid' in error_message.lower():
+                params = error_data.get('params', {})
+                details = error_data.get('details', {})
+                
+                # Build a friendly message
+                friendly_msg = _('Invalid product data:\n\n')
+                
+                # Check for specific field errors
+                if 'status' in params or 'status' in details:
+                    friendly_msg += _('• Status: Please select a valid status (Draft, Pending, Private, or Published)\n')
+                
+                if 'sku' in params or 'sku' in details:
+                    friendly_msg += _('• SKU: The SKU may already exist or contain invalid characters\n')
+                
+                if 'price' in params or 'regular_price' in params:
+                    friendly_msg += _('• Price: Please enter a valid price\n')
+                
+                # Add the original message if we couldn't parse it
+                if friendly_msg == _('Invalid product data:\n\n'):
+                    friendly_msg += error_message
+                else:
+                    friendly_msg += _('\nOriginal error: %s') % error_message
+                
+                return friendly_msg
+            
+            # Handle other errors
+            return _('WooCommerce Error: %s') % error_message
+            
+        except Exception as e:
+            _logger.warning(f"Error parsing WooCommerce error: {e}")
+            return _('WooCommerce API Error: %s') % str(error_details)
+    
+    def _parse_woocommerce_error_text(self, error_text):
+        """Parse WooCommerce API error text and return user-friendly message"""
+        try:
+            # Try to extract JSON from text
+            if '{' in error_text:
+                import json
+                # Try to find JSON in the text
+                start = error_text.find('{')
+                end = error_text.rfind('}') + 1
+                if start >= 0 and end > start:
+                    json_str = error_text[start:end]
+                    error_details = json.loads(json_str)
+                    return self._parse_woocommerce_error(error_details)
+            
+            # If no JSON found, return a generic message
+            if 'status' in error_text.lower() and 'string' in error_text.lower():
+                return _('Invalid Status: Please select a valid status (Draft, Pending, Private, or Published) in the product form.')
+            
+            return _('WooCommerce Error: %s') % error_text[:200]  # Limit length
+            
+        except Exception as e:
+            _logger.warning(f"Error parsing WooCommerce error text: {e}")
+            return _('WooCommerce API Error: %s') % error_text[:200]
     

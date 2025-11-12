@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates>
+    <t t-name="documents.DocumentsDetailsPanel" t-inherit="documents.DocumentsDetailsPanel" t-inherit-mode="extension" owl="1">
+        <!-- Add Archive Placement field after Tags section -->
+        <xpath expr="//div[contains(@class, 'o_field_widget o_field_many2many_tags')]" position="after">
+            <!-- Archive Placement Section -->
+            <div t-if="record.data.type !== 'folder'" class="mb-3 w-100">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="fw-bold me-2">Archive Placement</span>
+                    <button 
+                        class="btn btn-sm btn-link p-0 ms-2"
+                        t-on-click="() => this.onExtractQrCode()"
+                        title="Extract QR code from document"
+                        t-if="!userPermissionViewOnly and record.data.raw"
+                    >
+                        <i class="fa fa-refresh"/> Extract QR
+                    </button>
+                </div>
+                <div class="o_field_widget o_field_char mt-1">
+                    <CharField 
+                        name="'x_archive_location'" 
+                        record="record"
+                        readonly="userPermissionViewOnly"
+                    />
+                </div>
+                <small class="text-muted d-block mt-1">Archive location extracted from QR code</small>
+            </div>
+        </xpath>
+    </t>
+</templates>
+

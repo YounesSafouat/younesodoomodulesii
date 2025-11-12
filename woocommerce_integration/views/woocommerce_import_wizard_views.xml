@@ -26,6 +26,7 @@
                             <group>
                                 <field name="import_categories" invisible="state != 'draft'"/>
                                 <field name="import_images" invisible="state != 'draft'"/>
+                                <field name="image_download_mode" invisible="state != 'draft' or not import_images"/>
                                 <field name="import_attributes" invisible="state != 'draft'"/>
                             </group>
                         </group>

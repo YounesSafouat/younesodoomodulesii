@@ -80,7 +80,8 @@ class WooCommerceProduct(models.Model):
         ('pending', 'Pending'),
         ('private', 'Private'),
         ('publish', 'Published'),
-    ], string='Status')
+    ], string='Status', default='draft', required=True,
+        help='Product status in WooCommerce. Required when pushing to WooCommerce.')
     
     featured = fields.Boolean(
         string='Featured',
@@ -284,11 +285,13 @@ class WooCommerceProduct(models.Model):
                 wc_data = self.odoo_product_id._prepare_woocommerce_data()
             else:
                 # Fallback to basic data if no Odoo product linked
+                # Ensure status is always a valid string value
+                status_value = self.status if self.status in ['draft', 'pending', 'private', 'publish'] else 'draft'
                 wc_data = {
-                    'name': self.name,
-                    'regular_price': str(self.regular_price) if self.regular_price else '',
+                    'name': self.name or 'Untitled Product',
+                    'regular_price': str(self.regular_price) if self.regular_price else '0.00',
                     'sale_price': str(self.sale_price) if self.sale_price else '',
-                    'status': self.status,
+                    'status': status_value,
                     'sku': self.wc_sku or '',
                 }
                 
@@ -298,7 +301,33 @@ class WooCommerceProduct(models.Model):
             
             _logger.info(f"Syncing WooCommerce product {self.wc_product_id} with full data: {wc_data}")
         
-        self.connection_id.update_product(self.wc_product_id, wc_data)
+        # Determine if this is a create or update operation
+        # If wc_product_id is 0, None, or empty, it's a new product - create it
+        # Otherwise, update the existing product
+        if not self.wc_product_id or self.wc_product_id == 0:
+            # New product - create it in WooCommerce
+            _logger.info(f"Creating new WooCommerce product (no ID yet)")
+            # Remove 'id' from data if present (WooCommerce generates it automatically)
+            wc_data.pop('id', None)
+            response = self.connection_id.create_product(wc_data)
+            
+            if response and response.get('id'):
+                # Update the record with the new WooCommerce ID
+                self.write({
+                    'wc_product_id': response['id'],
+                    'sync_status': 'synced',
+                    'last_sync': fields.Datetime.now(),
+                    'sync_error': False,
+                })
+                _logger.info(f"Created new WooCommerce product with ID: {response['id']}")
+            else:
+                raise UserError(_('Failed to create product in WooCommerce: No ID returned'))
+        else:
+            # Existing product - update it
+            _logger.info(f"Updating existing WooCommerce product {self.wc_product_id}")
+            # Ensure ID is an integer (remove any commas or formatting)
+            product_id = int(str(self.wc_product_id).replace(',', '').replace(' ', ''))
+            self.connection_id.update_product(product_id, wc_data)
     
     def _prepare_partial_woocommerce_data(self, updated_fields):
         """Prepare only the changed fields for WooCommerce API"""
@@ -337,7 +366,8 @@ class WooCommerceProduct(models.Model):
                     else:
                         wc_data[wc_field] = ''
                 elif field == 'status':
-                    wc_data[wc_field] = self.status
+                    # Ensure status is always a valid string value
+                    wc_data[wc_field] = self.status if self.status in ['draft', 'pending', 'private', 'publish'] else 'draft'
                 elif field == 'wc_sku':
                     wc_data[wc_field] = self.wc_sku or ''
         
@@ -393,6 +423,7 @@ class WooCommerceProduct(models.Model):
         self.ensure_one()
         
         try:
+            # Sync images first if any are pending
             for image in self.product_image_ids.filtered(lambda i: i.sync_status == 'pending'):
                 try:
                     if image.image_1920:
@@ -400,8 +431,10 @@ class WooCommerceProduct(models.Model):
                 except Exception as e:
                     _logger.error(f"Error syncing image {image.name}: {e}")
             
+            # Sync the product (create or update)
             self._sync_to_woocommerce_store()
             
+            # Update sync status (wc_product_id may have been set if it was a new product)
             self.write({
                 'sync_status': 'synced',
                 'last_sync': fields.Datetime.now(),

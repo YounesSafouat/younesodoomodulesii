@@ -32,8 +32,13 @@
                         <button name="action_import_products" type="object" 
                                 string="Import from WooCommerce" 
                                 class="btn-success" 
-                                invisible="connection_status != 'success'"
+                                invisible="connection_status != 'success' or import_in_progress"
                                 confirm="Do you want to import products from WooCommerce? This will open the import wizard."/>
+                        <button name="action_stop_import" type="object" 
+                                string="Stop Import" 
+                                class="btn-danger" 
+                                invisible="not import_in_progress"
+                                confirm="Do you want to stop the running import? This will cancel the current import process."/>
                         <button name="action_import_odoo_products" type="object" 
                                 string="Export to WooCommerce" 
                                 class="btn-warning" 
@@ -112,6 +117,10 @@
                                 <group>
                                     <field name="connection_error" readonly="1" 
                                            invisible="not connection_error"/>
+                                    <field name="import_log" readonly="1" 
+                                           widget="text" 
+                                           placeholder="Import logs will appear here..."
+                                           invisible="not import_log"/>
                                 </group>
                             </page>
                             

@@ -1,0 +1,17 @@
+# Requirements for Document QR Location module
+# Install these packages in your Odoo environment
+
+# QR code reading library
+pyzbar>=0.1.9
+
+# PDF to image conversion
+pdf2image>=1.16.0
+
+# Image processing
+Pillow>=9.0.0
+
+# Note: You also need to install zbar shared library on your system:
+# On Ubuntu/Debian: sudo apt-get install libzbar0
+# On CentOS/RHEL: sudo yum install zbar
+# On macOS: brew install zbar
+
