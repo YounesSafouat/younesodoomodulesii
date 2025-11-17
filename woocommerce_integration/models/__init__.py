@@ -10,3 +10,4 @@ from . import woocommerce_import_wizard
 from . import woocommerce_conflict_resolution_wizard
 from . import woocommerce_field_mapping
 from . import woocommerce_order_webhook
+from . import woocommerce_variant_mapping

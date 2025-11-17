@@ -62,6 +62,35 @@ class WooCommerceConnection(models.Model):
     ], string='Default Sync Direction', default='bidirectional',
        help='Default sync direction for new products')
     
+    # Variant Configuration
+    import_variants = fields.Boolean(
+        string='Import Product Variants',
+        default=True,
+        help='Import WooCommerce product variations as Odoo variants'
+    )
+    
+    auto_create_variants = fields.Boolean(
+        string='Auto-Create Variants',
+        default=True,
+        help='Automatically create Odoo variants when importing variable products'
+    )
+    
+    variant_sync_enabled = fields.Boolean(
+        string='Enable Variant Sync',
+        default=True,
+        help='Enable synchronization of variant-specific data (price, stock, SKU)'
+    )
+    
+    variant_attribute_mapping = fields.Selection([
+        ('auto', 'Auto-Map by Name'),
+        ('manual', 'Manual Mapping Required'),
+        ('skip', 'Skip Variant Creation'),
+    ], string='Variant Attribute Mapping', default='auto',
+       help='How to map WooCommerce attributes to Odoo attributes:\n'
+            '- Auto-Map by Name: Automatically match attributes by name\n'
+            '- Manual Mapping Required: Require user to map attributes manually\n'
+            '- Skip Variant Creation: Import as simple products only')
+    
     api_version = fields.Selection([
         ('v3', 'v3'),
         ('v2', 'v2'),
@@ -542,6 +571,41 @@ class WooCommerceConnection(models.Model):
         except requests.exceptions.RequestException as e:
             _logger.error(f"Error fetching attribute terms for attribute {attribute_id} from WooCommerce: {e}")
             raise UserError(_('Failed to fetch attribute terms from WooCommerce: %s') % str(e))
+    
+    def get_product_variations(self, product_id, page=1, per_page=100):
+        """Get variations for a variable product from WooCommerce"""
+        self.ensure_one()
+        
+        url = self._get_api_url(f'products/{product_id}/variations')
+        headers = self._get_auth_headers()
+        
+        params = {
+            'page': page,
+            'per_page': per_page,
+        }
+        
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error fetching variations for product {product_id} from WooCommerce: {e}")
+            raise UserError(_('Failed to fetch variations from WooCommerce: %s') % str(e))
+    
+    def get_product_variation(self, product_id, variation_id):
+        """Get a specific variation from WooCommerce"""
+        self.ensure_one()
+        
+        url = self._get_api_url(f'products/{product_id}/variations/{variation_id}')
+        headers = self._get_auth_headers()
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error fetching variation {variation_id} for product {product_id} from WooCommerce: {e}")
+            raise UserError(_('Failed to fetch variation from WooCommerce: %s') % str(e))
     
     def action_import_categories(self):
         """Import all categories from WooCommerce"""

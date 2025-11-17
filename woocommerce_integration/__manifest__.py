@@ -38,6 +38,7 @@ Features:
         'views/woocommerce_connection_views.xml',
         'views/woocommerce_product_views.xml',
         'views/woocommerce_product_image_views.xml',
+        'views/woocommerce_variant_mapping_views.xml',
         'views/woocommerce_category_views.xml',
         'views/woocommerce_category_mapping_wizard_views.xml',
         'views/odoo_to_woocommerce_wizard_views.xml',

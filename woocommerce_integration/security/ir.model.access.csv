@@ -24,3 +24,5 @@ access_woocommerce_order_webhook_log_public,woocommerce.order.webhook.log.public
 access_woocommerce_order_webhook_log_user,woocommerce.order.webhook.log.user,model_woocommerce_order_webhook_log,base.group_user,1,0,0,0
 access_woocommerce_order_webhook_log_manager,woocommerce.order.webhook.log.manager,model_woocommerce_order_webhook_log,base.group_system,1,1,1,1
 access_res_config_settings_woocommerce,res.config.settings.woocommerce,model_res_config_settings,base.group_system,1,1,1,1
+access_woocommerce_variant_mapping_user,woocommerce.variant.mapping.user,model_woocommerce_variant_mapping,base.group_user,1,1,1,0
+access_woocommerce_variant_mapping_manager,woocommerce.variant.mapping.manager,model_woocommerce_variant_mapping,base.group_system,1,1,1,1

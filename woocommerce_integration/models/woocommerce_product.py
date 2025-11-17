@@ -144,6 +144,46 @@ class WooCommerceProduct(models.Model):
         help='True if there are images that need to be synced to WooCommerce'
     )
     
+    # Variant Support
+    is_variable_product = fields.Boolean(
+        string='Variable Product',
+        compute='_compute_is_variable_product',
+        help='True if this is a WooCommerce variable product with variations'
+    )
+    
+    variant_mapping_ids = fields.One2many(
+        'woocommerce.variant.mapping',
+        'product_id',
+        string='Variations',
+        help='WooCommerce product variations mapped to Odoo variants'
+    )
+    
+    variant_count = fields.Integer(
+        string='Variation Count',
+        compute='_compute_variant_count',
+        help='Number of variations for this product'
+    )
+    
+    @api.depends('wc_data')
+    def _compute_is_variable_product(self):
+        """Check if product is a variable product"""
+        for record in self:
+            try:
+                if record.wc_data:
+                    import json
+                    wc_data = json.loads(record.wc_data) if isinstance(record.wc_data, str) else record.wc_data
+                    record.is_variable_product = wc_data.get('type') == 'variable'
+                else:
+                    record.is_variable_product = False
+            except:
+                record.is_variable_product = False
+    
+    @api.depends('variant_mapping_ids')
+    def _compute_variant_count(self):
+        """Compute the number of variations"""
+        for record in self:
+            record.variant_count = len(record.variant_mapping_ids)
+    
     @api.depends('product_image_ids')
     def _compute_image_count(self):
         """Compute the number of images for this product"""
@@ -551,7 +591,8 @@ class WooCommerceProduct(models.Model):
             raise UserError(_('This WooCommerce product already has a corresponding Odoo product.'))
         
         try:
-            wc_data = eval(self.wc_data) if self.wc_data else {}
+            import json
+            wc_data = json.loads(self.wc_data) if isinstance(self.wc_data, str) else (eval(self.wc_data) if self.wc_data else {})
             
             product_vals = {
                 'name': self.name,
@@ -572,7 +613,12 @@ class WooCommerceProduct(models.Model):
             
             self._sync_images(odoo_product, wc_data)
             
-            self._sync_attributes(odoo_product, wc_data)
+            # Handle variants if this is a variable product
+            if self.is_variable_product and self.connection_id.import_variants:
+                self._sync_variants(odoo_product, wc_data)
+            else:
+                # For simple products, sync attributes normally
+                self._sync_attributes(odoo_product, wc_data)
             
             return {
                 'type': 'ir.actions.act_window',
@@ -587,6 +633,98 @@ class WooCommerceProduct(models.Model):
             self.sync_status = 'error'
             self.sync_error = str(e)
             raise UserError(_('Failed to create Odoo product: %s') % str(e))
+    
+    def _sync_variants(self, odoo_product, wc_data):
+        """Sync WooCommerce variations as Odoo variants"""
+        self.ensure_one()
+        
+        if not self.connection_id.import_variants:
+            return
+        
+        try:
+            # Get variations from WooCommerce
+            variations = self.connection_id.get_product_variations(self.wc_product_id)
+            
+            if not variations:
+                _logger.info(f"No variations found for variable product {self.name}")
+                return
+            
+            # Process each variation
+            for variation_data in variations:
+                # Create variant mapping
+                variant_mapping = self.env['woocommerce.variant.mapping'].create_from_woocommerce_variation(
+                    variation_data, self.id
+                )
+                
+                # Auto-create Odoo variant if enabled
+                if self.connection_id.auto_create_variants:
+                    try:
+                        variant_mapping.action_create_odoo_variant()
+                    except Exception as e:
+                        _logger.warning(f"Failed to auto-create variant for variation {variation_data.get('id')}: {e}")
+            
+            _logger.info(f"Synced {len(variations)} variations for product {self.name}")
+            
+        except Exception as e:
+            _logger.error(f"Error syncing variants for product {self.name}: {e}")
+    
+    def action_import_variations(self):
+        """Import variations from WooCommerce"""
+        self.ensure_one()
+        
+        if not self.is_variable_product:
+            raise UserError(_('This product is not a variable product.'))
+        
+        try:
+            # Get variations from WooCommerce
+            variations = self.connection_id.get_product_variations(self.wc_product_id)
+            
+            if not variations:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('No Variations'),
+                        'message': _('No variations found for this product.'),
+                        'type': 'warning',
+                    }
+                }
+            
+            # Create variant mappings
+            created_count = 0
+            for variation_data in variations:
+                existing = self.env['woocommerce.variant.mapping'].search([
+                    ('product_id', '=', self.id),
+                    ('wc_variation_id', '=', variation_data.get('id'))
+                ], limit=1)
+                
+                if not existing:
+                    self.env['woocommerce.variant.mapping'].create_from_woocommerce_variation(
+                        variation_data, self.id
+                    )
+                    created_count += 1
+            
+            # Auto-create variants if enabled
+            if self.connection_id.auto_create_variants and self.odoo_product_id:
+                for variant_mapping in self.variant_mapping_ids.filtered(lambda v: not v.odoo_variant_id):
+                    try:
+                        variant_mapping.action_create_odoo_variant()
+                    except Exception as e:
+                        _logger.warning(f"Failed to create variant: {e}")
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Variations Imported'),
+                    'message': _('Imported %d variations. %d new mappings created.') % (len(variations), created_count),
+                    'type': 'success',
+                }
+            }
+            
+        except Exception as e:
+            _logger.error(f"Error importing variations: {e}")
+            raise UserError(_('Failed to import variations: %s') % str(e))
     
     def _sync_categories(self, odoo_product, wc_data):
         """Sync product categories"""
@@ -635,7 +773,7 @@ class WooCommerceProduct(models.Model):
             _logger.warning(f"Failed to sync image for product {odoo_product.name}: {e}")
     
     def _sync_attributes(self, odoo_product, wc_data):
-        """Sync product attributes"""
+        """Sync product attributes (for simple products or when variant creation is skipped)"""
         attributes_data = wc_data.get('attributes', [])
         if not attributes_data:
             return
@@ -646,11 +784,16 @@ class WooCommerceProduct(models.Model):
                 attr_options = attr_data.get('options', [])
                 
                 if attr_name and attr_options:
+                    # Check if we should create variants or not
+                    create_variant = 'no_variant'
+                    if self.connection_id.import_variants and self.connection_id.variant_attribute_mapping != 'skip':
+                        create_variant = 'always'  # Create variants for variable products
+                    
                     attribute = self.env['product.attribute'].search([('name', '=', attr_name)], limit=1)
                     if not attribute:
                         attribute = self.env['product.attribute'].create({
                             'name': attr_name,
-                            'create_variant': 'no_variant',
+                            'create_variant': create_variant,
                         })
                     
                     for option in attr_options:
@@ -735,6 +878,23 @@ class WooCommerceProduct(models.Model):
             'res_model': 'product.template',
             'res_id': self.odoo_product_id.id,
             'view_mode': 'form',
+            'target': 'current',
+        }
+    
+    def action_view_variations(self):
+        """View product variations"""
+        self.ensure_one()
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Product Variations'),
+            'res_model': 'woocommerce.variant.mapping',
+            'view_mode': 'list,form',
+            'domain': [('product_id', '=', self.id)],
+            'context': {
+                'default_product_id': self.id,
+                'default_connection_id': self.connection_id.id,
+            },
             'target': 'current',
         }
     

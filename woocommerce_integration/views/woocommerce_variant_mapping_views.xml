@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Variant Mapping Tree View -->
+        <record id="view_woocommerce_variant_mapping_tree" model="ir.ui.view">
+            <field name="name">woocommerce.variant.mapping.tree</field>
+            <field name="model">woocommerce.variant.mapping</field>
+            <field name="arch" type="xml">
+                <list string="Product Variations">
+                    <field name="wc_variation_id"/>
+                    <field name="name"/>
+                    <field name="wc_sku"/>
+                    <field name="wc_regular_price"/>
+                    <field name="wc_sale_price"/>
+                    <field name="wc_stock_quantity"/>
+                    <field name="odoo_variant_id"/>
+                    <field name="sync_status" widget="badge"
+                           decoration-success="sync_status == 'synced'"
+                           decoration-warning="sync_status == 'pending'"
+                           decoration-danger="sync_status == 'error'"/>
+                    <field name="last_sync"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Variant Mapping Form View -->
+        <record id="view_woocommerce_variant_mapping_form" model="ir.ui.view">
+            <field name="name">woocommerce.variant.mapping.form</field>
+            <field name="model">woocommerce.variant.mapping</field>
+            <field name="arch" type="xml">
+                <form string="WooCommerce Variation">
+                    <header>
+                        <button name="action_create_odoo_variant" type="object" 
+                                string="Create Odoo Variant" 
+                                class="btn-primary" 
+                                invisible="odoo_variant_id"
+                                confirm="Create an Odoo product variant from this WooCommerce variation?"/>
+                        <button name="action_sync_to_woocommerce" type="object" 
+                                string="Push to WooCommerce" 
+                                class="btn-warning"
+                                invisible="not odoo_variant_id"
+                                confirm="Update this variation on WooCommerce with your local changes?"/>
+                        <button name="action_sync_from_woocommerce" type="object" 
+                                string="Pull from WooCommerce" 
+                                class="btn-success"
+                                confirm="Update this variation with data from WooCommerce?"/>
+                        <field name="sync_status" widget="statusbar" statusbar_visible="pending,synced,error"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_create_odoo_variant" type="object" 
+                                    class="oe_stat_button" icon="fa-plus"
+                                    invisible="odoo_variant_id">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">Create</span>
+                                    <span class="o_stat_text">Odoo Variant</span>
+                                </div>
+                            </button>
+                            <button name="%(product.product_product_action)d" type="action" 
+                                    class="oe_stat_button" icon="fa-external-link"
+                                    invisible="not odoo_variant_id"
+                                    context="{'search_default_product_tmpl_id': odoo_product_template_id}">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">View</span>
+                                    <span class="o_stat_text">Odoo Variant</span>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name"/>
+                            </h1>
+                        </div>
+                        
+                        <group string="WooCommerce Variation">
+                            <group>
+                                <field name="product_id" readonly="1"/>
+                                <field name="connection_id" readonly="1"/>
+                                <field name="wc_variation_id"/>
+                                <field name="wc_sku"/>
+                            </group>
+                            <group>
+                                <field name="wc_regular_price"/>
+                                <field name="wc_sale_price"/>
+                                <field name="wc_price"/>
+                                <field name="wc_stock_quantity"/>
+                                <field name="wc_stock_status"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Odoo Variant">
+                            <group>
+                                <field name="odoo_variant_id"/>
+                                <field name="odoo_product_template_id" readonly="1"/>
+                            </group>
+                        </group>
+                        
+                        <group string="Attribute Values">
+                            <field name="attribute_values" widget="text"/>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Sync Information">
+                                <group>
+                                    <field name="last_sync"/>
+                                    <field name="sync_error" widget="text"/>
+                                </group>
+                            </page>
+                            <page string="WooCommerce Data">
+                                <field name="wc_variation_data" widget="text"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Variant Mapping Search View -->
+        <record id="view_woocommerce_variant_mapping_search" model="ir.ui.view">
+            <field name="name">woocommerce.variant.mapping.search</field>
+            <field name="model">woocommerce.variant.mapping</field>
+            <field name="arch" type="xml">
+                <search string="Search Variations">
+                    <field name="name"/>
+                    <field name="wc_sku"/>
+                    <field name="product_id"/>
+                    <field name="odoo_variant_id"/>
+                    <filter string="Pending Sync" name="pending" domain="[('sync_status', '=', 'pending')]"/>
+                    <filter string="Synced" name="synced" domain="[('sync_status', '=', 'synced')]"/>
+                    <filter string="Error" name="error" domain="[('sync_status', '=', 'error')]"/>
+                    <filter string="Without Odoo Variant" name="no_odoo_variant" domain="[('odoo_variant_id', '=', False)]"/>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action for Variant Mapping -->
+        <record id="action_woocommerce_variant_mapping" model="ir.actions.act_window">
+            <field name="name">Product Variations</field>
+            <field name="res_model">woocommerce.variant.mapping</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_woocommerce_variant_mapping_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No variations found!
+                </p>
+                <p>
+                    Variations are automatically imported when you import variable products from WooCommerce.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>
+

@@ -939,6 +939,35 @@ class WooCommerceImportWizard(models.TransientModel):
                                     _logger.error(f"Error importing image: {e}")
                                     continue
                         
+                        # Import variations if this is a variable product
+                        if self.import_attributes and product_data.get('type') == 'variable' and self.connection_id.import_variants:
+                            try:
+                                variations = self.connection_id.get_product_variations(product_data.get('id'))
+                                if variations:
+                                    variation_count = 0
+                                    for variation_data in variations:
+                                        try:
+                                            self.env['woocommerce.variant.mapping'].create_from_woocommerce_variation(
+                                                variation_data, wc_product.id
+                                            )
+                                            variation_count += 1
+                                        except Exception as e:
+                                            _logger.warning(f"Error importing variation {variation_data.get('id')}: {e}")
+                                            continue
+                                    
+                                    # Auto-create Odoo variants if enabled
+                                    if self.connection_id.auto_create_variants:
+                                        for variant_mapping in wc_product.variant_mapping_ids.filtered(lambda v: not v.odoo_variant_id):
+                                            try:
+                                                variant_mapping.action_create_odoo_variant()
+                                            except Exception as e:
+                                                _logger.warning(f"Error auto-creating variant: {e}")
+                                    
+                                    log_messages.append(_('📦 Imported %d variations for: %s') % (variation_count, product_data.get('name', '')))
+                            except Exception as e:
+                                _logger.warning(f"Error importing variations for product {product_data.get('name')}: {e}")
+                                # Don't fail the whole import if variations fail
+                        
                         imported_count += 1
                         log_messages.append(_('✅ Created product: %s') % product_data.get('name', ''))
                         

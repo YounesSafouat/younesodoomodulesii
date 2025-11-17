@@ -47,6 +47,11 @@
                                 string="Push to WooCommerce" 
                                 class="btn-warning"
                                 confirm="Update this product on WooCommerce with your local changes?"/>
+                        <button name="action_import_variations" type="object" 
+                                string="Import Variations" 
+                                class="btn-info"
+                                invisible="not is_variable_product"
+                                confirm="Import variations from WooCommerce for this variable product?"/>
                         <field name="sync_status" widget="statusbar" statusbar_visible="pending,synced,error"/>
                     </header>
                     <sheet>
@@ -66,6 +71,12 @@
                                     <span class="o_stat_text">View</span>
                                     <span class="o_stat_text">Odoo Product</span>
                                 </div>
+                            </button>
+                            <button name="action_view_variations" type="object" 
+                                    class="oe_stat_button" icon="fa-list"
+                                    invisible="not is_variable_product"
+                                    context="{'default_product_id': id}">
+                                <field name="variant_count" widget="statinfo" string="Variations"/>
                             </button>
                         </div>
                         
@@ -152,6 +163,40 @@
                                 </group>
                             </page>
                             
+                            <page string="Variations" name="variations" invisible="not is_variable_product">
+                                <group>
+                                    <field name="is_variable_product" invisible="1"/>
+                                    <field name="variant_mapping_ids" 
+                                           context="{'default_product_id': id, 'default_connection_id': connection_id}"
+                                           nolabel="1">
+                                        <list string="Product Variations" editable="bottom">
+                                            <field name="wc_variation_id"/>
+                                            <field name="name"/>
+                                            <field name="wc_sku"/>
+                                            <field name="wc_regular_price"/>
+                                            <field name="wc_sale_price"/>
+                                            <field name="wc_stock_quantity"/>
+                                            <field name="odoo_variant_id"/>
+                                            <field name="sync_status" widget="badge"
+                                                   decoration-success="sync_status == 'synced'"
+                                                   decoration-warning="sync_status == 'pending'"
+                                                   decoration-danger="sync_status == 'error'"/>
+                                            <button name="action_create_odoo_variant" type="object" 
+                                                    string="Create Variant" 
+                                                    class="btn-sm btn-primary"
+                                                    invisible="odoo_variant_id"/>
+                                            <button name="action_sync_to_woocommerce" type="object" 
+                                                    string="Push" 
+                                                    class="btn-sm btn-warning"
+                                                    invisible="not odoo_variant_id"/>
+                                            <button name="action_sync_from_woocommerce" type="object" 
+                                                    string="Pull" 
+                                                    class="btn-sm btn-success"/>
+                                        </list>
+                                    </field>
+                                </group>
+                            </page>
+                            
                             <page string="Raw Data" name="raw_data">
                                 <group>
                                     <field name="wc_data_formatted" readonly="1" widget="text" 
@@ -184,6 +229,7 @@
                     <separator/>
                     <filter string="With Odoo Product" name="with_odoo" domain="[('odoo_product_id', '!=', False)]"/>
                     <filter string="Without Odoo Product" name="without_odoo" domain="[('odoo_product_id', '=', False)]"/>
+                    <filter string="Variable Products" name="variable" domain="[('is_variable_product', '=', True)]"/>
                     <group expand="0" string="Group By">
                         <filter string="Connection" name="group_connection" context="{'group_by': 'connection_id'}"/>
                         <filter string="Stock Status" name="group_stock" context="{'group_by': 'stock_status'}"/>
