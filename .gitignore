@@ -1,15 +1,71 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.log
-*.pot
+# Odoo specific
+data_dir/
+odoo.log
+odoo_startup.log
+odoo_master_password.txt
 *.pyc
-.pytest_cache/
-.coverage
-.venv
-venv/
+__pycache__/
+*.pyo
+*.pyd
+.Python
 env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+odoo-venv/
+
+# Node.js / Frontend
+ecommerce-frontend/node_modules/
+ecommerce-frontend/build/
+ecommerce-frontend/dist/
+ecommerce-frontend/.env
+ecommerce-frontend/.env.local
+ecommerce-frontend/.env.development.local
+ecommerce-frontend/.env.test.local
+ecommerce-frontend/.env.production.local
+ecommerce-frontend/npm-debug.log*
+ecommerce-frontend/yarn-debug.log*
+ecommerce-frontend/yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
 *.db
-*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+
+# Plesk specific
+.plesk/
+plesk/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Build artifacts
+build/
+dist/
