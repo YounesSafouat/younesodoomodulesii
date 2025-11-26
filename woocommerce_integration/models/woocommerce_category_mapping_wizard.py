@@ -58,7 +58,7 @@ class WooCommerceCategoryMappingWizard(models.TransientModel):
         if self.create_new_category:
             self.odoo_category_id = False
         elif not self.odoo_category_id:
-            # Try to find existing category with same name
+
             if self.wc_category_id and self.wc_category_id.name:
                 existing = self.env['product.category'].search([
                     ('name', 'ilike', self.wc_category_id.name)
@@ -77,12 +77,12 @@ class WooCommerceCategoryMappingWizard(models.TransientModel):
             if not self.new_category_name:
                 raise UserError(_('Please enter a name for the new category.'))
             
-            # Create new Odoo category
+
             odoo_category = self.env['product.category'].create({
                 'name': self.new_category_name,
             })
             
-            # Map the WooCommerce category
+
             self.wc_category_id.write({
                 'odoo_category_id': odoo_category.id,
             })
@@ -90,7 +90,7 @@ class WooCommerceCategoryMappingWizard(models.TransientModel):
             message = _('Created new Odoo category "%s" and mapped it to WooCommerce category "%s".') % (
                 self.new_category_name, self.wc_category_id.name)
         else:
-            # Map to existing Odoo category
+
             self.wc_category_id.write({
                 'odoo_category_id': self.odoo_category_id.id,
             })
@@ -111,7 +111,7 @@ class WooCommerceCategoryMappingWizard(models.TransientModel):
     
     def action_bulk_map_categories(self):
         """Bulk map multiple WooCommerce categories"""
-        # Get all unmapped categories for this connection
+
         unmapped_categories = self.env['woocommerce.category'].search([
             ('connection_id', '=', self.connection_id.id),
             ('odoo_category_id', '=', False)
@@ -131,7 +131,7 @@ class WooCommerceCategoryMappingWizard(models.TransientModel):
         mapped_count = 0
         
         for wc_cat in unmapped_categories:
-            # Try to find existing Odoo category with same name
+
             existing = self.env['product.category'].search([
                 ('name', 'ilike', wc_cat.name)
             ], limit=1)
@@ -140,7 +140,7 @@ class WooCommerceCategoryMappingWizard(models.TransientModel):
                 wc_cat.write({'odoo_category_id': existing.id})
                 mapped_count += 1
             else:
-                # Create new category
+
                 new_category = self.env['product.category'].create({
                     'name': wc_cat.name,
                 })

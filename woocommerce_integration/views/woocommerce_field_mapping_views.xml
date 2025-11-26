@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- WooCommerce Field Mapping Tree View -->
+
         <record id="view_woocommerce_field_mapping_tree" model="ir.ui.view">
             <field name="name">woocommerce.field.mapping.tree</field>
             <field name="model">woocommerce.field.mapping</field>
@@ -37,7 +36,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Field Mapping Form View -->
         <record id="view_woocommerce_field_mapping_form" model="ir.ui.view">
             <field name="name">woocommerce.field.mapping.form</field>
             <field name="model">woocommerce.field.mapping</field>
@@ -57,7 +55,7 @@
                                 <field name="name" placeholder="e.g., Product Name Mapping"/>
                             </h1>
                         </div>
-                        
+
                         <group string="Configuration">
                             <group string="Basic Settings">
                                 <field name="connection_id" readonly="1"/>
@@ -72,7 +70,7 @@
                                 <field name="condition_domain" placeholder="e.g., [('status', '=', 'publish')]"/>
                             </group>
                         </group>
-                        
+
                         <group string="Field Selection">
                             <group string="WooCommerce Field">
                                 <field name="wc_field_name" widget="selection_search" 
@@ -87,7 +85,7 @@
                                 <field name="odoo_field_label" placeholder="Optional: Custom label for this field"/>
                             </group>
                         </group>
-                        
+
                         <notebook>
                             <page string="Data Transformation" name="transformation">
                                 <group>
@@ -108,7 +106,7 @@
                                         </div>
                                     </group>
                                 </group>
-                                
+
                                 <group string="Custom Python Function" invisible="transform_function != 'custom'">
                                     <field name="custom_function" widget="code" 
                                            options="{'language': 'python'}"
@@ -117,7 +115,7 @@
                                 </group>
                             </page>
                         </notebook>
-                        
+
                         <group string="Additional Information">
                             <field name="notes" nolabel="1" placeholder="Additional notes about this mapping..."/>
                         </group>
@@ -126,7 +124,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Field Mapping Search View -->
         <record id="view_woocommerce_field_mapping_search" model="ir.ui.view">
             <field name="name">woocommerce.field.mapping.search</field>
             <field name="model">woocommerce.field.mapping</field>
@@ -136,19 +133,19 @@
                     <field name="wc_field_name"/>
                     <field name="odoo_field_name"/>
                     <field name="connection_id"/>
-                    
+
                     <filter string="Active" name="active" domain="[('is_active', '=', True)]"/>
                     <filter string="Required" name="required" domain="[('is_required', '=', True)]"/>
-                    
+
                     <separator/>
                     <filter string="WooCommerce → Odoo" name="wc_to_odoo" domain="[('mapping_direction', '=', 'wc_to_odoo')]"/>
                     <filter string="Odoo → WooCommerce" name="odoo_to_wc" domain="[('mapping_direction', '=', 'odoo_to_wc')]"/>
                     <filter string="Bidirectional" name="bidirectional" domain="[('mapping_direction', '=', 'bidirectional')]"/>
-                    
+
                     <separator/>
                     <filter string="With Transformation" name="with_transform" domain="[('transform_function', '!=', 'none')]"/>
                     <filter string="Custom Functions" name="custom_functions" domain="[('transform_function', '=', 'custom')]"/>
-                    
+
                     <group expand="0" string="Group By">
                         <filter string="Connection" name="group_connection" context="{'group_by': 'connection_id'}"/>
                         <filter string="Direction" name="group_direction" context="{'group_by': 'mapping_direction'}"/>
@@ -159,7 +156,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Field Mapping Action -->
         <record id="action_woocommerce_field_mapping" model="ir.actions.act_window">
             <field name="name">Field Mappings</field>
             <field name="res_model">woocommerce.field.mapping</field>
@@ -176,7 +172,6 @@
             </field>
         </record>
 
-        <!-- Server Actions for Field Mapping -->
         <record id="action_create_default_mappings" model="ir.actions.server">
             <field name="name">Create Default Mappings</field>
             <field name="model_id" ref="model_woocommerce_field_mapping"/>

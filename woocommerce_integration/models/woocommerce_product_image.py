@@ -109,12 +109,12 @@ class WooCommerceProductImage(models.Model):
         """Override create to set default name and trigger sync"""
         _logger.info(f"Creating {len(vals_list)} WooCommerce product image(s)")
         
-        # Process each record in the batch
+
         for vals in vals_list:
             if not vals.get('name'):
                 vals['name'] = f"Image {self.env['woocommerce.product'].browse(vals.get('product_id', 0)).name or 'Unknown'}"
             
-            # Always set sync status to pending for new images (even if no image_1920 yet)
+
             vals['sync_status'] = 'pending'
             vals['sync_error'] = False
             vals['wc_image_id'] = False
@@ -122,12 +122,12 @@ class WooCommerceProductImage(models.Model):
         
         _logger.info(f"Creating {len(vals_list)} new image(s) with pending sync status")
         
-        # Call parent create method
+
         records = super(WooCommerceProductImage, self).create(vals_list)
         
-        # Don't auto-sync images immediately - let user control when to sync
-        # Images will be synced when user clicks "Push to WooCommerce" button
-        # This prevents unwanted uploads and duplicates
+
+
+
         
         return records
     
@@ -135,16 +135,16 @@ class WooCommerceProductImage(models.Model):
         """Override read to trigger lazy loading of images if needed"""
         result = super().read(fields=fields, load=load)
         
-        # If image_1920 is being read and it's empty, try lazy loading
+
         if fields is None or 'image_1920' in fields:
             for record in self:
                 if not record.image_1920 and record.wc_image_url and record.sync_status == 'pending':
                     try:
                         record._lazy_load_image()
-                        # Re-read to get the updated image
+
                         updated = record.read(['image_1920'])
                         if updated and updated[0].get('image_1920'):
-                            # Update the result with the loaded image
+
                             for res in result:
                                 if res.get('id') == record.id:
                                     res['image_1920'] = updated[0]['image_1920']
@@ -158,14 +158,14 @@ class WooCommerceProductImage(models.Model):
         if not self.env.context.get('skip_logging'):
             _logger.info(f"Writing to WooCommerce product image {self.name} with vals: {list(vals.keys())}")
         
-        # Handle main image logic - only one main image per product
+
         if vals.get('is_main_image'):
-            # Unset other main images for the same product
+
             self.product_id.product_image_ids.filtered(
                 lambda img: img.id != self.id
             ).with_context(skip_logging=True).write({'is_main_image': False})
         
-        # Reset sync status when image changes
+
         if 'image_1920' in vals and vals['image_1920']:
             vals['sync_status'] = 'pending'
             vals['sync_error'] = False
@@ -175,13 +175,13 @@ class WooCommerceProductImage(models.Model):
         
         result = super(WooCommerceProductImage, self).write(vals)
         
-        # Don't auto-sync images immediately - let user control when to sync
-        # Images will be synced when user clicks "Push to WooCommerce" button
-        # This prevents unwanted uploads and duplicates
+
+
+
         
-        # Auto-adjust sequence for main image
+
         if vals.get('is_main_image') and not vals.get('sequence'):
-            self.write({'sequence': 5})  # Main image gets lowest sequence
+            self.write({'sequence': 5})
         
         return result
     
@@ -190,7 +190,7 @@ class WooCommerceProductImage(models.Model):
         """Handle image change and prepare for sync"""
         if self.image_1920:
             _logger.info(f"Image changed via onchange for {self.name}")
-            # Set sync status to pending
+
             self.sync_status = 'pending'
             self.sync_error = False
             self.wc_image_id = False
@@ -206,15 +206,15 @@ class WooCommerceProductImage(models.Model):
         try:
             connection = self.product_id.connection_id
             
-            # Use the configured image upload method
+
             if connection.image_upload_method == 'wordpress_media':
                 _logger.info(f"Using WordPress Media Library upload method for image {self.name}")
                 wc_image_data = self._upload_image_to_woocommerce()
-            else:  # woocommerce_base64
+            else:
                 _logger.info(f"Using WooCommerce API Base64 upload method for image {self.name}")
                 wc_image_data = self._upload_image_to_woocommerce_base64()
             
-            # Mark as synced with WordPress Media ID
+
             self.write({
                 'wc_image_id': wc_image_data.get('id'),
                 'wc_image_url': wc_image_data.get('src'),
@@ -223,10 +223,10 @@ class WooCommerceProductImage(models.Model):
             })
             _logger.info(f"Image {self.name} uploaded to WordPress Media Library with ID: {wc_image_data.get('id')}")
             
-            # After uploading image, update the WooCommerce product with images
+
             self.product_id._sync_to_woocommerce_store()
             
-            # Force refresh the sync status
+
             self.env.cr.commit()
             
             return {
@@ -265,23 +265,23 @@ class WooCommerceProductImage(models.Model):
         
         connection = self.product_id.connection_id
         
-        # Get the base URL for Odoo
+
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         
-        # For development: if localhost, use ngrok or public URL
+
         if 'localhost' in base_url or '127.0.0.1' in base_url:
-            # You'll need to set up a public URL for your Odoo instance
-            # For now, let's try uploading to WordPress Media Library as fallback
+
+
             _logger.warning("Odoo is on localhost - WooCommerce cannot access images. Falling back to WordPress Media Library.")
             raise UserError(_('Odoo is running on localhost. WooCommerce cannot access localhost URLs. Please use WordPress Media Library method or set up a public URL for Odoo.'))
         
-        # Create a public URL for the image
+
         image_url = f"{base_url}/web/image/woocommerce.product.image/{self.id}/image_1920.jpg"
         
-        # Prepare image data for WooCommerce API using URL
+
         image_data = {
             'name': self.name or 'product_image.jpg',
-            'src': image_url,  # Use public URL instead of base64
+            'src': image_url,
             'alt': self.alt_text or '',
             'position': self.sequence // 10,
         }
@@ -294,15 +294,15 @@ class WooCommerceProductImage(models.Model):
         """Set this image as the main product image"""
         self.ensure_one()
         
-        # Unset other main images
+
         other_images = self.product_id.product_image_ids.filtered(lambda img: img.id != self.id)
         if other_images:
             other_images.with_context(skip_logging=True).write({'is_main_image': False})
         
-        # Set this as main and adjust sequence
+
         self.write({
             'is_main_image': True,
-            'sequence': 5,  # Main image gets lowest sequence
+            'sequence': 5,
         })
         
         return {
@@ -319,13 +319,13 @@ class WooCommerceProductImage(models.Model):
         """Move image up in sequence"""
         self.ensure_one()
         
-        # Find previous image with lower sequence
+
         prev_image = self.product_id.product_image_ids.filtered(
             lambda img: img.sequence < self.sequence and not img.is_main_image
         ).sorted('sequence', reverse=True)[:1]
         
         if prev_image:
-            # Swap sequences
+
             old_sequence = self.sequence
             self.write({'sequence': prev_image.sequence})
             prev_image.write({'sequence': old_sequence})
@@ -354,13 +354,13 @@ class WooCommerceProductImage(models.Model):
         """Move image down in sequence"""
         self.ensure_one()
         
-        # Find next image with higher sequence
+
         next_image = self.product_id.product_image_ids.filtered(
             lambda img: img.sequence > self.sequence and not img.is_main_image
         ).sorted('sequence')[:1]
         
         if next_image:
-            # Swap sequences
+
             old_sequence = self.sequence
             self.write({'sequence': next_image.sequence})
             next_image.write({'sequence': old_sequence})
@@ -443,7 +443,7 @@ class WooCommerceProductImage(models.Model):
         if not connection.wp_username or not connection.wp_application_password:
             raise UserError(_('WordPress username and application password are required for media upload. Please configure them in the WooCommerce connection settings.'))
         
-        # Validate application password format
+
         clean_password = connection.wp_application_password.replace(' ', '')
         if len(clean_password) != 24:
             raise UserError(_('WordPress Application Password format is invalid. It should be 24 characters (format: xxxx xxxx xxxx xxxx xxxx xxxx). Current length: %d') % len(clean_password))
@@ -465,7 +465,7 @@ class WooCommerceProductImage(models.Model):
         _logger.info(f"Application Password configured: {'Yes' if connection.wp_application_password else 'No'}")
         
         try:
-            response = requests.post(wp_api_url, headers=headers, data=image_data, timeout=600)  # 10 minutes
+            response = requests.post(wp_api_url, headers=headers, data=image_data, timeout=600)
             
             if response.status_code == 401:
                 _logger.error(f"WordPress authentication failed (401). Check:")
@@ -506,13 +506,13 @@ class WooCommerceProductImage(models.Model):
         
         connection = self.product_id.connection_id
         
-        # Process image for WooCommerce
+
         image_data = self._process_image_for_woocommerce()
         
-        # Prepare image data for WooCommerce API using base64
+
         image_data_dict = {
             'name': self.name or 'product_image.jpg',
-            'src': image_data,  # Base64 data
+            'src': image_data,
             'alt': self.alt_text or '',
             'position': self.sequence // 10,
         }
@@ -530,7 +530,7 @@ class WooCommerceProductImage(models.Model):
             import base64
             import io
             
-            # Try to import PIL
+
             try:
                 from PIL import Image
             except ImportError:
@@ -565,7 +565,7 @@ class WooCommerceProductImage(models.Model):
             raise UserError(_('No WooCommerce image URL available'))
         
         try:
-            response = requests.get(self.wc_image_url, timeout=600)  # 10 minutes
+            response = requests.get(self.wc_image_url, timeout=600)
             response.raise_for_status()
             
             image_data = base64.b64encode(response.content).decode('utf-8')
@@ -606,7 +606,7 @@ class WooCommerceProductImage(models.Model):
     def _lazy_load_image(self):
         """Lazy load image from URL if not already downloaded"""
         if self.image_1920:
-            return  # Already downloaded
+            return
         
         if not self.wc_image_url:
             _logger.warning(f"No image URL available for {self.name}")
@@ -616,7 +616,7 @@ class WooCommerceProductImage(models.Model):
             _logger.info(f"Lazy loading image: {self.name} from {self.wc_image_url}")
             response = requests.get(
                 self.wc_image_url,
-                timeout=600,  # 10 minutes
+                timeout=600,
                 stream=True,
                 headers={'User-Agent': 'Odoo-WooCommerce-Integration/1.0'}
             )
@@ -664,7 +664,7 @@ class WooCommerceProductImage(models.Model):
                 'wc_image_id': wc_image_data.get('id'),
                 'wc_image_url': wc_image_data.get('src'),
                 'alt_text': wc_image_data.get('alt'),
-                'sync_status': 'pending' if not download_image else 'synced',  # Pending if lazy loading
+                'sync_status': 'pending' if not download_image else 'synced',
             }
             
             image_url = wc_image_data.get('src')
@@ -679,7 +679,7 @@ class WooCommerceProductImage(models.Model):
                         
                         response = requests.get(
                             image_url, 
-                            timeout=600,  # 10 minutes
+                            timeout=600,
                             stream=True,
                             headers={'User-Agent': 'Odoo-WooCommerce-Integration/1.0'}
                         )
@@ -694,9 +694,9 @@ class WooCommerceProductImage(models.Model):
                         
                         image_data = base64.b64encode(response.content).decode('utf-8')
                         vals['image_1920'] = image_data
-                        vals['sync_status'] = 'synced'  # Already synced since we're importing FROM WooCommerce
-                        vals['wc_image_id'] = wc_image_data.get('id')  # Store original WC image ID
-                        vals['wc_image_url'] = image_url  # Store original WC image URL
+                        vals['sync_status'] = 'synced'
+                        vals['wc_image_id'] = wc_image_data.get('id')
+                        vals['wc_image_url'] = image_url
                         download_success = True
                         
                         _logger.info(f"Successfully downloaded image: {image_name}")

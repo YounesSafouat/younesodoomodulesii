@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -145,17 +143,17 @@ class WooCommerceVariantMapping(models.Model):
         try:
             import json
             
-            # Parse attribute values
+
             attr_values = {}
             if self.attribute_values:
                 attr_values = json.loads(self.attribute_values)
             
-            # Get or create Odoo attributes and values
+
             product_template = self.product_id.odoo_product_id
             attribute_line_ids = []
             
             for attr_name, attr_value in attr_values.items():
-                # Find or create attribute
+
                 attribute = self.env['product.attribute'].search([
                     ('name', '=', attr_name)
                 ], limit=1)
@@ -163,10 +161,10 @@ class WooCommerceVariantMapping(models.Model):
                 if not attribute:
                     attribute = self.env['product.attribute'].create({
                         'name': attr_name,
-                        'create_variant': 'always',  # Always create variants for WooCommerce attributes
+                        'create_variant': 'always',
                     })
                 
-                # Find or create attribute value
+
                 attr_value_record = self.env['product.attribute.value'].search([
                     ('name', '=', attr_value),
                     ('attribute_id', '=', attribute.id)
@@ -178,33 +176,33 @@ class WooCommerceVariantMapping(models.Model):
                         'attribute_id': attribute.id,
                     })
                 
-                # Add to product template attribute lines
+
                 attr_line = product_template.attribute_line_ids.filtered(
                     lambda l: l.attribute_id.id == attribute.id
                 )
                 
                 if not attr_line:
-                    # Create attribute line
+
                     self.env['product.template.attribute.line'].create({
                         'product_tmpl_id': product_template.id,
                         'attribute_id': attribute.id,
                         'value_ids': [(6, 0, [attr_value_record.id])],
                     })
                 else:
-                    # Add value to existing line if not present
+
                     if attr_value_record.id not in attr_line.value_ids.ids:
                         attr_line.value_ids = [(4, attr_value_record.id)]
             
-            # Force Odoo to generate variants
+
             product_template._create_product_variant_ids()
             
-            # Find the matching variant
+
             variant = self._find_matching_variant(product_template, attr_values)
             
             if variant:
                 self.odoo_variant_id = variant.id
                 
-                # Update variant data
+
                 variant_vals = {}
                 if self.wc_sku:
                     variant_vals['default_code'] = self.wc_sku
@@ -218,11 +216,11 @@ class WooCommerceVariantMapping(models.Model):
                 if variant_vals:
                     variant.write(variant_vals)
                 
-                # Update stock if available
+
                 if self.wc_stock_quantity is not None:
-                    # Set stock quantity (requires stock module)
+
                     if hasattr(variant, 'qty_available'):
-                        # This would need stock module integration
+
                         pass
                 
                 self.write({
@@ -257,7 +255,7 @@ class WooCommerceVariantMapping(models.Model):
             for attr_line in variant.product_template_attribute_value_ids:
                 variant_attrs[attr_line.attribute_id.name] = attr_line.name
             
-            # Check if all attributes match
+
             if all(variant_attrs.get(k) == v for k, v in attr_values.items()):
                 return variant
         
@@ -271,24 +269,24 @@ class WooCommerceVariantMapping(models.Model):
             raise UserError(_('No Odoo variant linked to sync.'))
         
         try:
-            # Prepare variation data
+
             variation_data = {
                 'sku': self.odoo_variant_id.default_code or '',
                 'regular_price': str(self.odoo_variant_id.list_price or '0.00'),
             }
             
-            # Add sale price if different
+
             if self.wc_sale_price and self.wc_sale_price > 0:
                 variation_data['sale_price'] = str(self.wc_sale_price)
             else:
                 variation_data['sale_price'] = ''
             
-            # Update stock if available
+
             if hasattr(self.odoo_variant_id, 'qty_available'):
                 variation_data['stock_quantity'] = int(self.odoo_variant_id.qty_available or 0)
                 variation_data['manage_stock'] = True
             
-            # Update variation in WooCommerce
+
             connection = self.product_id.connection_id
             url = connection._get_api_url(f'products/{self.product_id.wc_product_id}/variations/{self.wc_variation_id}')
             headers = connection._get_auth_headers()
@@ -336,7 +334,7 @@ class WooCommerceVariantMapping(models.Model):
             
             variation_data = response.json()
             
-            # Update mapping record
+
             self.write({
                 'wc_sku': variation_data.get('sku', ''),
                 'wc_price': float(variation_data.get('price', 0)),
@@ -350,7 +348,7 @@ class WooCommerceVariantMapping(models.Model):
                 'sync_error': False,
             })
             
-            # Update Odoo variant if linked
+
             if self.odoo_variant_id:
                 variant_vals = {}
                 if self.wc_sale_price and self.wc_sale_price > 0:
@@ -379,13 +377,28 @@ class WooCommerceVariantMapping(models.Model):
             })
             raise UserError(_('Failed to sync variant: %s') % str(e))
     
+    def action_view_odoo_variant(self):
+        """View the corresponding Odoo variant"""
+        self.ensure_one()
+        
+        if not self.odoo_variant_id:
+            raise UserError(_('No Odoo variant linked to this variation.'))
+        
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.product',
+            'res_id': self.odoo_variant_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+    
     @api.model
     def create_from_woocommerce_variation(self, variation_data, product_id):
         """Create variant mapping from WooCommerce variation data"""
         try:
             import json
             
-            # Extract attribute values
+
             attributes = variation_data.get('attributes', [])
             attr_values = {}
             for attr in attributes:
@@ -394,7 +407,7 @@ class WooCommerceVariantMapping(models.Model):
                 if attr_name and attr_value:
                     attr_values[attr_name] = attr_value
             
-            # Check if mapping already exists
+
             existing = self.search([
                 ('product_id', '=', product_id),
                 ('wc_variation_id', '=', variation_data.get('id'))
@@ -422,4 +435,6 @@ class WooCommerceVariantMapping(models.Model):
         except Exception as e:
             _logger.error(f"Error creating variant mapping: {e}")
             raise
+
+
 

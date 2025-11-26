@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- WooCommerce Import Wizard Form View -->
+
         <record id="view_woocommerce_import_wizard_form" model="ir.ui.view">
             <field name="name">woocommerce.import.wizard.form</field>
             <field name="model">woocommerce.import.wizard</field>
@@ -15,7 +14,7 @@
                         <div class="oe_title">
                             <h1>Import Products from WooCommerce</h1>
                         </div>
-                        
+
                         <group>
                             <group>
                                 <field name="connection_id" readonly="1"/>
@@ -30,8 +29,7 @@
                                 <field name="import_attributes" invisible="state != 'draft'"/>
                             </group>
                         </group>
-                        
-                        <!-- Import Behavior Options -->
+
                         <group string="Import Behavior" invisible="state != 'draft'">
                             <group>
                                 <field name="update_existing" invisible="state != 'draft'"/>
@@ -46,8 +44,7 @@
                                 </div>
                             </group>
                         </group>
-                        
-                        <!-- Batch Progress Information -->
+
                         <group invisible="state == 'draft'" string="Batch Progress">
                             <group string="Status">
                                 <div style="margin-bottom: 10px;">
@@ -61,8 +58,7 @@
                                 <field name="error_count" readonly="1"/>
                             </group>
                         </group>
-                        
-                        <!-- Progress Bar Section -->
+
                         <group invisible="state not in ['importing', 'done']">
                             <group colspan="2">
                                 <field name="progress_message" readonly="1" nolabel="1" 
@@ -77,38 +73,35 @@
                                 </div>
                             </group>
                         </group>
-                        
+
                         <notebook invisible="state not in ['importing', 'done']">
                             <page string="Import Log" name="log">
                                 <field name="log_message" readonly="1" widget="text" nolabel="1"/>
                             </page>
                         </notebook>
-                        
+
                     </sheet>
                     <footer>
-                        <!-- Draft State: Show Start Import Button -->
+
                         <button name="action_start_import" 
                                 type="object" 
                                 string="Start Import" 
                                 class="btn-primary" 
                                 invisible="state != 'draft'"
                                 confirm="Are you sure you want to start importing products from WooCommerce? This will process the products according to your settings."/>
-                        
-                        <!-- Importing State: Show Process Next Batch Button -->
+
                         <button name="action_process_next_batch" 
                                 type="object" 
                                 string="Process Next Batch" 
                                 class="btn-success" 
                                 invisible="state != 'importing'"/>
-                        
-                        <!-- Done State: Show View Products Button -->
+
                         <button name="action_view_imported_products" 
                                 type="object" 
                                 string="View Imported Products" 
                                 class="btn-success" 
                                 invisible="state != 'done'"/>
-                        
-                        <!-- Always Show Cancel/Close Button -->
+
                         <button string="Close" 
                                 class="btn-secondary" 
                                 special="cancel"/>
@@ -117,7 +110,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Import Wizard Action -->
         <record id="action_woocommerce_import_wizard" model="ir.actions.act_window">
             <field name="name">Import Products from WooCommerce</field>
             <field name="res_model">woocommerce.import.wizard</field>

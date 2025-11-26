@@ -144,7 +144,7 @@ class WooCommerceProduct(models.Model):
         help='True if there are images that need to be synced to WooCommerce'
     )
     
-    # Variant Support
+
     is_variable_product = fields.Boolean(
         string='Variable Product',
         compute='_compute_is_variable_product',
@@ -270,10 +270,10 @@ class WooCommerceProduct(models.Model):
         sync_needed = any(key in vals for key in sync_fields)
         updated_fields = [key for key in vals.keys() if key in sync_fields]
         
-        # Check if we're importing from WooCommerce - if so, don't sync back
+
         importing_from_woocommerce = self.env.context.get('importing_from_woocommerce', False)
         
-        # Set context before calling super().write() so it's available during sync
+
         if updated_fields and not importing_from_woocommerce:
             self = self.with_context(updated_fields=updated_fields)
         
@@ -306,12 +306,12 @@ class WooCommerceProduct(models.Model):
         """Sync changes to the actual WooCommerce store"""
         self.ensure_one()
         
-        # Get the fields that were actually updated
+
         updated_fields = self.env.context.get('updated_fields', [])
         _logger.info(f"WooCommerce sync called with updated_fields: {updated_fields}")
         
         if updated_fields:
-            # Only send the changed fields
+
             wc_data = self._prepare_partial_woocommerce_data(updated_fields)
             if wc_data:
                 _logger.info(f"Syncing WooCommerce product {self.wc_product_id} with partial data (updated fields: {updated_fields}): {wc_data}")
@@ -319,13 +319,13 @@ class WooCommerceProduct(models.Model):
                 _logger.warning(f"No WooCommerce data prepared for fields: {updated_fields}")
                 return
         else:
-            # Fallback to full data if no specific fields were updated
+
             _logger.info("No updated_fields in context, using full data sync")
             if self.odoo_product_id:
                 wc_data = self.odoo_product_id._prepare_woocommerce_data()
             else:
-                # Fallback to basic data if no Odoo product linked
-                # Ensure status is always a valid string value
+
+
                 status_value = self.status if self.status in ['draft', 'pending', 'private', 'publish'] else 'draft'
                 wc_data = {
                     'name': self.name or 'Untitled Product',
@@ -341,18 +341,18 @@ class WooCommerceProduct(models.Model):
             
             _logger.info(f"Syncing WooCommerce product {self.wc_product_id} with full data: {wc_data}")
         
-        # Determine if this is a create or update operation
-        # If wc_product_id is 0, None, or empty, it's a new product - create it
-        # Otherwise, update the existing product
+
+
+
         if not self.wc_product_id or self.wc_product_id == 0:
-            # New product - create it in WooCommerce
+
             _logger.info(f"Creating new WooCommerce product (no ID yet)")
-            # Remove 'id' from data if present (WooCommerce generates it automatically)
+
             wc_data.pop('id', None)
             response = self.connection_id.create_product(wc_data)
             
             if response and response.get('id'):
-                # Update the record with the new WooCommerce ID
+
                 self.write({
                     'wc_product_id': response['id'],
                     'sync_status': 'synced',
@@ -363,9 +363,9 @@ class WooCommerceProduct(models.Model):
             else:
                 raise UserError(_('Failed to create product in WooCommerce: No ID returned'))
         else:
-            # Existing product - update it
+
             _logger.info(f"Updating existing WooCommerce product {self.wc_product_id}")
-            # Ensure ID is an integer (remove any commas or formatting)
+
             product_id = int(str(self.wc_product_id).replace(',', '').replace(' ', ''))
             self.connection_id.update_product(product_id, wc_data)
     
@@ -374,7 +374,7 @@ class WooCommerceProduct(models.Model):
         self.ensure_one()
         wc_data = {}
         
-        # Filter out non-WooCommerce fields
+
         wc_fields = ['name', 'price', 'regular_price', 'sale_price', 'status', 'wc_sku']
         actual_updated_fields = [field for field in updated_fields if field in wc_fields]
         
@@ -382,7 +382,7 @@ class WooCommerceProduct(models.Model):
             _logger.warning(f"No valid WooCommerce fields in updated_fields: {updated_fields}")
             return {}
         
-        # Map Odoo fields to WooCommerce fields
+
         field_mapping = {
             'name': 'name',
             'price': 'regular_price',
@@ -406,12 +406,12 @@ class WooCommerceProduct(models.Model):
                     else:
                         wc_data[wc_field] = ''
                 elif field == 'status':
-                    # Ensure status is always a valid string value
+
                     wc_data[wc_field] = self.status if self.status in ['draft', 'pending', 'private', 'publish'] else 'draft'
                 elif field == 'wc_sku':
                     wc_data[wc_field] = self.wc_sku or ''
         
-        # If we're updating prices, make sure we handle the sale price logic
+
         if 'sale_price' in actual_updated_fields or 'regular_price' in actual_updated_fields or 'price' in actual_updated_fields:
             if self.sale_price and self.sale_price > 0:
                 wc_data['sale_price'] = str(self.sale_price)
@@ -463,7 +463,7 @@ class WooCommerceProduct(models.Model):
         self.ensure_one()
         
         try:
-            # Sync images first if any are pending
+
             for image in self.product_image_ids.filtered(lambda i: i.sync_status == 'pending'):
                 try:
                     if image.image_1920:
@@ -471,10 +471,10 @@ class WooCommerceProduct(models.Model):
                 except Exception as e:
                     _logger.error(f"Error syncing image {image.name}: {e}")
             
-            # Sync the product (create or update)
+
             self._sync_to_woocommerce_store()
             
-            # Update sync status (wc_product_id may have been set if it was a new product)
+
             self.write({
                 'sync_status': 'synced',
                 'last_sync': fields.Datetime.now(),
@@ -613,11 +613,11 @@ class WooCommerceProduct(models.Model):
             
             self._sync_images(odoo_product, wc_data)
             
-            # Handle variants if this is a variable product
+
             if self.is_variable_product and self.connection_id.import_variants:
                 self._sync_variants(odoo_product, wc_data)
             else:
-                # For simple products, sync attributes normally
+
                 self._sync_attributes(odoo_product, wc_data)
             
             return {
@@ -642,21 +642,21 @@ class WooCommerceProduct(models.Model):
             return
         
         try:
-            # Get variations from WooCommerce
+
             variations = self.connection_id.get_product_variations(self.wc_product_id)
             
             if not variations:
                 _logger.info(f"No variations found for variable product {self.name}")
                 return
             
-            # Process each variation
+
             for variation_data in variations:
-                # Create variant mapping
+
                 variant_mapping = self.env['woocommerce.variant.mapping'].create_from_woocommerce_variation(
                     variation_data, self.id
                 )
                 
-                # Auto-create Odoo variant if enabled
+
                 if self.connection_id.auto_create_variants:
                     try:
                         variant_mapping.action_create_odoo_variant()
@@ -676,7 +676,7 @@ class WooCommerceProduct(models.Model):
             raise UserError(_('This product is not a variable product.'))
         
         try:
-            # Get variations from WooCommerce
+
             variations = self.connection_id.get_product_variations(self.wc_product_id)
             
             if not variations:
@@ -690,7 +690,7 @@ class WooCommerceProduct(models.Model):
                     }
                 }
             
-            # Create variant mappings
+
             created_count = 0
             for variation_data in variations:
                 existing = self.env['woocommerce.variant.mapping'].search([
@@ -704,7 +704,7 @@ class WooCommerceProduct(models.Model):
                     )
                     created_count += 1
             
-            # Auto-create variants if enabled
+
             if self.connection_id.auto_create_variants and self.odoo_product_id:
                 for variant_mapping in self.variant_mapping_ids.filtered(lambda v: not v.odoo_variant_id):
                     try:
@@ -755,7 +755,7 @@ class WooCommerceProduct(models.Model):
             image_url = main_image.get('src', '')
             
             if image_url:
-                response = requests.get(image_url, timeout=600)  # 10 minutes
+                response = requests.get(image_url, timeout=600)
                 response.raise_for_status()
                 
                 attachment = self.env['ir.attachment'].create({
@@ -784,10 +784,10 @@ class WooCommerceProduct(models.Model):
                 attr_options = attr_data.get('options', [])
                 
                 if attr_name and attr_options:
-                    # Check if we should create variants or not
+
                     create_variant = 'no_variant'
                     if self.connection_id.import_variants and self.connection_id.variant_attribute_mapping != 'skip':
-                        create_variant = 'always'  # Create variants for variable products
+                        create_variant = 'always'
                     
                     attribute = self.env['product.attribute'].search([('name', '=', attr_name)], limit=1)
                     if not attribute:

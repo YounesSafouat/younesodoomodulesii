@@ -61,8 +61,7 @@ class WooCommerceConnection(models.Model):
         ('bidirectional', 'Bidirectional'),
     ], string='Default Sync Direction', default='bidirectional',
        help='Default sync direction for new products')
-    
-    # Variant Configuration
+
     import_variants = fields.Boolean(
         string='Import Product Variants',
         default=True,
@@ -141,7 +140,7 @@ class WooCommerceConnection(models.Model):
         help='Products linked to this WooCommerce connection'
     )
     
-    # Import Progress Fields
+
     import_in_progress = fields.Boolean(
         string='Import In Progress',
         default=False,
@@ -166,7 +165,7 @@ class WooCommerceConnection(models.Model):
         help='Current status of the import'
     )
     
-    # Background import tracking (persisted on connection record)
+
     import_in_progress_persisted = fields.Boolean(
         string='Import In Progress (Persisted)',
         default=False,
@@ -190,8 +189,8 @@ class WooCommerceConnection(models.Model):
         help='JSON data of discovered WooCommerce fields from the store'
     )
     
-    # Import wizard tracking (for background processing)
-    # Note: Cannot use Many2one to TransientModel, so we store the ID as integer
+
+
     active_import_wizard_id = fields.Integer(
         string='Active Import Wizard ID',
         help='ID of current active import wizard for background processing (stored as integer, not relation)'
@@ -370,7 +369,7 @@ class WooCommerceConnection(models.Model):
             url = self._get_api_url('system_status')
             headers = self._get_auth_headers()
             
-            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
+            response = requests.get(url, headers=headers, timeout=600)
             response.raise_for_status()
             
             self.connection_status = 'success'
@@ -452,20 +451,20 @@ class WooCommerceConnection(models.Model):
         }
         params.update(kwargs)
         
-        # Ensure we get all product data including attributes
-        # WooCommerce API parameters to include all data
+
+
         include_params = {
-            'include_meta': 'true',  # Include meta data
-            'include_attributes': 'true',  # Include attributes
-            'include_variations': 'true',  # Include variations
-            'include_images': 'true',  # Include images
-            'include_categories': 'true',  # Include categories
-            'include_tags': 'true',  # Include tags
+            'include_meta': 'true',
+            'include_attributes': 'true',
+            'include_variations': 'true',
+            'include_images': 'true',
+            'include_categories': 'true',
+            'include_tags': 'true',
         }
         params.update(include_params)
         
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
+            response = requests.get(url, headers=headers, params=params, timeout=600)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -479,18 +478,18 @@ class WooCommerceConnection(models.Model):
         url = self._get_api_url(f'products/{product_id}')
         headers = self._get_auth_headers()
         
-        # Ensure we get all product data including attributes
+
         params = {
-            'include_meta': 'true',  # Include meta data
-            'include_attributes': 'true',  # Include attributes
-            'include_variations': 'true',  # Include variations
-            'include_images': 'true',  # Include images
-            'include_categories': 'true',  # Include categories
-            'include_tags': 'true',  # Include tags
+            'include_meta': 'true',
+            'include_attributes': 'true',
+            'include_variations': 'true',
+            'include_images': 'true',
+            'include_categories': 'true',
+            'include_tags': 'true',
         }
         
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
+            response = requests.get(url, headers=headers, params=params, timeout=600)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -525,7 +524,7 @@ class WooCommerceConnection(models.Model):
         headers = self._get_auth_headers()
         
         try:
-            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
+            response = requests.get(url, headers=headers, timeout=600)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -545,7 +544,7 @@ class WooCommerceConnection(models.Model):
         }
         
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
+            response = requests.get(url, headers=headers, params=params, timeout=600)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -585,7 +584,7 @@ class WooCommerceConnection(models.Model):
         }
         
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=600)  # 10 minutes
+            response = requests.get(url, headers=headers, params=params, timeout=600)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -600,7 +599,7 @@ class WooCommerceConnection(models.Model):
         headers = self._get_auth_headers()
         
         try:
-            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
+            response = requests.get(url, headers=headers, timeout=600)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
@@ -660,7 +659,7 @@ class WooCommerceConnection(models.Model):
                     WooCategory.create(vals)
                     created_count += 1
             
-            # Update parent relationships
+
             for wc_cat in WooCategory.search([('connection_id', '=', self.id), ('wc_parent_id', '!=', 0)]):
                 parent = WooCategory.search([
                     ('wc_category_id', '=', wc_cat.wc_parent_id),
@@ -740,7 +739,7 @@ class WooCommerceConnection(models.Model):
         """Create default field mappings for this connection"""
         self.ensure_one()
         
-        # Check if mappings already exist
+
         existing_mappings = self.env['woocommerce.field.mapping'].search([
             ('connection_id', '=', self.id)
         ])
@@ -748,7 +747,7 @@ class WooCommerceConnection(models.Model):
         if existing_mappings:
             raise UserError(_('Field mappings already exist for this connection. Please delete existing mappings first if you want to recreate them.'))
         
-        # Create default mappings
+
         default_mappings = self.env['woocommerce.field.mapping'].get_default_mappings()
         for mapping_data in default_mappings:
             mapping_data['connection_id'] = self.id
@@ -772,7 +771,7 @@ class WooCommerceConnection(models.Model):
             raise UserError(_('Please test the connection first before getting WooCommerce fields.'))
         
         try:
-            # Get multiple products to find all custom fields (some products might have different custom fields)
+
             products = self.get_products(page=1, per_page=10)
             
             if not products:
@@ -786,14 +785,14 @@ class WooCommerceConnection(models.Model):
                     }
                 }
             
-            # Get global attributes from WooCommerce
+
             try:
                 attributes_data = self.get_attributes(page=1, per_page=100)
             except Exception as e:
                 _logger.warning(f"Failed to get attributes: {e}")
                 attributes_data = []
             
-            # Collect all unique fields from multiple products
+
             all_fields = set()
             custom_fields = set()
             
@@ -802,14 +801,14 @@ class WooCommerceConnection(models.Model):
                 fields = []
                 for key, value in data.items():
                     if isinstance(value, dict):
-                        # For nested objects like dimensions
+
                         nested_fields = extract_fields(value, f"{prefix}{key}.")
                         fields.extend(nested_fields)
                     elif isinstance(value, list) and value and isinstance(value[0], dict):
-                        # For arrays of objects like images, categories, meta_data, attributes
+
                         if key in ['images', 'categories', 'tags', 'attributes', 'default_attributes', 'variations', 'meta_data']:
                             if key == 'meta_data':
-                                # Extract custom fields from meta_data
+
                                 for meta_item in value:
                                     if isinstance(meta_item, dict) and 'key' in meta_item:
                                         meta_key = meta_item.get('key', '')
@@ -817,22 +816,22 @@ class WooCommerceConnection(models.Model):
                                         field_name = f"{prefix}meta_data.{meta_key}"
                                         field_label = f"Custom: {meta_key.replace('_', ' ').title()}"
                                         fields.append((field_name, field_label))
-                                        # Track custom fields separately
+
                                         custom_fields.add((field_name, field_label))
                             elif key == 'attributes':
-                                # Extract WooCommerce attributes
+
                                 for attr_item in value:
                                     if isinstance(attr_item, dict) and 'name' in attr_item:
                                         attr_name = attr_item.get('name', '')
                                         attr_slug = attr_item.get('slug', '')
                                         attr_id = attr_item.get('id', '')
-                                        # Create multiple field variations for attributes
+
                                         field_name = f"{prefix}attributes.{attr_slug}"
                                         field_label = f"Attribute: {attr_name}"
                                         fields.append((field_name, field_label))
                                         custom_fields.add((field_name, field_label))
                                         
-                                        # Also add variations for different ways to access the attribute
+
                                         field_name_values = f"{prefix}attributes.{attr_slug}.options"
                                         field_label_values = f"Attribute {attr_name} Values"
                                         fields.append((field_name_values, field_label_values))
@@ -840,19 +839,19 @@ class WooCommerceConnection(models.Model):
                             else:
                                 fields.append((f"{prefix}{key}", key.replace('_', ' ').title()))
                     else:
-                        # For simple fields
+
                         field_name = f"{prefix}{key}"
                         field_label = key.replace('_', ' ').title()
                         fields.append((field_name, field_label))
                         all_fields.add((field_name, field_label))
                 return fields
             
-            # Analyze all products to find all fields
+
             for product in products:
                 product_fields = extract_fields(product)
                 all_fields.update(product_fields)
             
-            # Add global attributes as available fields
+
             for attr in attributes_data:
                 if isinstance(attr, dict):
                     attr_name = attr.get('name', '')
@@ -860,29 +859,29 @@ class WooCommerceConnection(models.Model):
                     attr_id = attr.get('id', '')
                     
                     if attr_slug:
-                        # Add attribute field
+
                         field_name = f"attributes.{attr_slug}"
                         field_label = f"Attribute: {attr_name}"
                         all_fields.add((field_name, field_label))
                         custom_fields.add((field_name, field_label))
                         
-                        # Add attribute values field
+
                         field_name_values = f"attributes.{attr_slug}.options"
                         field_label_values = f"Attribute {attr_name} Values"
                         all_fields.add((field_name_values, field_label_values))
                         custom_fields.add((field_name_values, field_label_values))
                         
-                        # Add attribute by ID
+
                         field_name_id = f"attributes.{attr_id}"
                         field_label_id = f"Attribute ID {attr_id}: {attr_name}"
                         all_fields.add((field_name_id, field_label_id))
                         custom_fields.add((field_name_id, field_label_id))
             
-            # Convert sets back to lists and sort them
+
             wc_fields = sorted(list(all_fields))
             custom_fields_list = sorted(list(custom_fields))
             
-            # Store discovered fields in the connection for use in field mapping
+
             import json
             discovered_data = {
                 'all_fields': wc_fields,
@@ -895,7 +894,7 @@ class WooCommerceConnection(models.Model):
                 'discovered_wc_fields': json.dumps(discovered_data)
             })
             
-            # Store the discovered fields in the connection for reference
+
             attribute_fields = [f for f in wc_fields if f[0].startswith('attributes.')]
             meta_fields = [f for f in wc_fields if f[0].startswith('meta_data.')]
             regular_fields = [f for f in wc_fields if not f[0].startswith(('attributes.', 'meta_data.'))]
@@ -905,7 +904,7 @@ class WooCommerceConnection(models.Model):
             field_summary += f'  - {len(attribute_fields)} WooCommerce attributes\n'
             field_summary += f'  - {len(meta_fields)} custom meta fields\n\n'
             
-            # Show regular fields
+
             if regular_fields:
                 field_summary += 'Regular Fields:\n'
                 field_summary += '\n'.join([f'  {field[0]}: {field[1]}' for field in regular_fields[:10]])
@@ -913,7 +912,7 @@ class WooCommerceConnection(models.Model):
                     field_summary += f'\n  ... and {len(regular_fields) - 10} more regular fields'
                 field_summary += '\n\n'
             
-            # Show WooCommerce attributes
+
             if attribute_fields:
                 field_summary += 'WooCommerce Attributes:\n'
                 field_summary += '\n'.join([f'  {field[0]}: {field[1]}' for field in attribute_fields[:15]])
@@ -921,7 +920,7 @@ class WooCommerceConnection(models.Model):
                     field_summary += f'\n  ... and {len(attribute_fields) - 15} more attributes'
                 field_summary += '\n\n'
             
-            # Show custom meta fields
+
             if meta_fields:
                 field_summary += 'Custom Meta Fields:\n'
                 field_summary += '\n'.join([f'  {field[0]}: {field[1]}' for field in meta_fields[:15]])
@@ -961,16 +960,16 @@ class WooCommerceConnection(models.Model):
         """Create a new product in WooCommerce"""
         self.ensure_one()
         
-        # CRITICAL: Remove 'id' field if present - WooCommerce generates it automatically
-        # Sending an ID for a new product causes "ID non valide" error
-        product_data = product_data.copy()  # Don't modify the original
+
+
+        product_data = product_data.copy()
         product_data.pop('id', None)
         product_data.pop('wc_product_id', None)
         
-        # Handle duplicate SKU by making it unique
+
         if 'sku' in product_data and product_data['sku']:
             original_sku = product_data['sku']
-            # Add timestamp to make it unique
+
             product_data['sku'] = f"{original_sku}-{int(time.time())}"
         
         url = self._get_api_url('products')
@@ -978,32 +977,32 @@ class WooCommerceConnection(models.Model):
         
         try:
             _logger.info(f"Creating WooCommerce product with data: {product_data}")
-            response = requests.post(url, headers=headers, json=product_data, timeout=600)  # 10 minutes
+            response = requests.post(url, headers=headers, json=product_data, timeout=600)
             
             if response.status_code == 400:
                 try:
                     error_details = response.json()
                     
-                    # Handle duplicate SKU error by using the suggested unique SKU
+
                     if error_details.get('code') == 'product_invalid_sku' and error_details.get('data', {}).get('unique_sku'):
                         suggested_sku = error_details['data']['unique_sku']
                         _logger.info(f"Using WooCommerce suggested unique SKU: {suggested_sku}")
                         product_data['sku'] = suggested_sku
                         
-                        # Retry with the suggested SKU
-                        retry_response = requests.post(url, headers=headers, json=product_data, timeout=600)  # 10 minutes
+
+                        retry_response = requests.post(url, headers=headers, json=product_data, timeout=600)
                         if retry_response.status_code == 200 or retry_response.status_code == 201:
                             return retry_response.json()
                     
                     _logger.error(f"WooCommerce 400 Error during product creation: {error_details}")
-                    # Parse error to make it more user-friendly
+
                     error_message = self._parse_woocommerce_error(error_details)
                     raise UserError(error_message)
                 except UserError:
                     raise
                 except:
                     _logger.error(f"WooCommerce 400 Error during product creation: {response.text}")
-                    # Try to parse even if JSON parsing failed
+
                     error_message = self._parse_woocommerce_error_text(response.text)
                     raise UserError(error_message)
             
@@ -1017,26 +1016,26 @@ class WooCommerceConnection(models.Model):
         """Update an existing product in WooCommerce"""
         self.ensure_one()
         
-        # Ensure product_id is an integer (remove commas, spaces, etc.)
+
         try:
             product_id = int(str(product_id).replace(',', '').replace(' ', ''))
         except (ValueError, TypeError):
             raise UserError(_('Invalid product ID: %s. Product ID must be a number.') % product_id)
         
-        # Remove 'id' from product_data if present (not needed in update payload)
-        product_data = product_data.copy()  # Don't modify the original
+
+        product_data = product_data.copy()
         product_data.pop('id', None)
         product_data.pop('wc_product_id', None)
         
-        # Always merge with existing data to prevent overwriting other fields
+
         try:
             current_product = self.get_product(product_id)
             if current_product:
-                # Log what we're merging
+
                 _logger.info(f"BEFORE MERGE - Current product has {len(current_product.get('attributes', []))} attributes")
                 _logger.info(f"BEFORE MERGE - Update data has {len(product_data.get('attributes', []))} attributes")
                 
-                # Merge the new data with existing data
+
                 merged_data = current_product.copy()
                 merged_data.update(product_data)
                 product_data = merged_data
@@ -1045,16 +1044,16 @@ class WooCommerceConnection(models.Model):
                 _logger.info(f"Merged update with existing data for product {product_id}")
         except Exception as e:
             _logger.warning(f"Failed to get current product data for merge: {e}")
-            # Continue with original data if merge fails
+
         
         url = self._get_api_url(f'products/{product_id}')
         headers = self._get_auth_headers()
         
         try:
             _logger.info(f"Updating WooCommerce product {product_id} with data: {product_data}")
-            response = requests.put(url, headers=headers, json=product_data, timeout=600)  # 10 minutes
+            response = requests.put(url, headers=headers, json=product_data, timeout=600)
             
-            # Log response details for debugging
+
             _logger.info(f"WooCommerce API Response - Status: {response.status_code}")
             if response.status_code not in [200, 201]:
                 _logger.warning(f"WooCommerce API Response Text: {response.text}")
@@ -1064,14 +1063,14 @@ class WooCommerceConnection(models.Model):
                     error_details = response.json()
                     _logger.error(f"WooCommerce 400 Error for product {product_id}: {error_details}")
                     
-                    # Parse error to make it more user-friendly
+
                     error_message = self._parse_woocommerce_error(error_details)
                     raise UserError(error_message)
                 except UserError:
                     raise
                 except:
                     _logger.error(f"WooCommerce 400 Error for product {product_id}: {response.text}")
-                    # Try to parse even if JSON parsing failed
+
                     error_message = self._parse_woocommerce_error_text(response.text)
                     raise UserError(error_message)
             
@@ -1089,7 +1088,7 @@ class WooCommerceConnection(models.Model):
         headers = self._get_auth_headers()
         
         try:
-            response = requests.delete(url, headers=headers, timeout=600)  # 10 minutes
+            response = requests.delete(url, headers=headers, timeout=600)
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
@@ -1100,11 +1099,11 @@ class WooCommerceConnection(models.Model):
         """Create order webhook for this connection"""
         self.ensure_one()
         
-        # Generate webhook URL
+
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
         webhook_url = f"{base_url}/woocommerce/webhook/{self.id}"
         
-        # Create webhook
+
         webhook = self.env['woocommerce.order.webhook'].create({
             'name': f'Order Webhook - {self.name}',
             'connection_id': self.id,
@@ -1135,14 +1134,14 @@ class WooCommerceConnection(models.Model):
             _logger.info(f'No import in progress for connection {self.name}')
             return
         
-        # Try to find the active wizard
+
         wizard = None
         if self.active_import_wizard_id:
             wizard = self.env['woocommerce.import.wizard'].sudo().browse(self.active_import_wizard_id).exists()
         
-        # If wizard doesn't exist, try to find it by connection
+
         if not wizard:
-            # Search for importing wizard for this connection
+
             wizard = self.env['woocommerce.import.wizard'].sudo().search([
                 ('connection_id', '=', self.id),
                 ('state', '=', 'importing')
@@ -1153,7 +1152,7 @@ class WooCommerceConnection(models.Model):
                 self.env.cr.commit()
         
         if wizard:
-            # Process the batch using the wizard
+
             try:
                 wizard._import_single_batch_in_background()
             except Exception as e:
@@ -1164,18 +1163,18 @@ class WooCommerceConnection(models.Model):
                     'current transaction is aborted'
                 ])
                 
-                # Rollback on any error
+
                 self.env.cr.rollback()
                 
-                # Don't stop import on concurrency errors - let it retry
+
                 if is_concurrency_error:
                     _logger.warning(f'Concurrency error in batch processing, will retry: {e}')
                     return
                 
-                # Update connection to stop import on persistent errors (not concurrency)
+
                 if 'Record cannot be modified' not in str(e):
                     try:
-                        # Lock the connection before updating
+
                         self.env.cr.execute(
                             "SELECT id FROM woocommerce_connection WHERE id = %s FOR UPDATE NOWAIT",
                             (self.id,)
@@ -1186,18 +1185,18 @@ class WooCommerceConnection(models.Model):
                         self.env.cr.rollback()
                         _logger.warning(f'Could not update connection status: {lock_error}')
         else:
-            # No wizard found, but import is marked as in progress
-            # Check if we should continue based on progress
+
+
             total_imported = self.import_progress_count_persisted
             total_to_import = self.import_total_count_persisted
             
             if total_imported >= total_to_import:
-                # Import is complete
+
                 _logger.info(f'Import complete for connection {self.name}: {total_imported}/{total_to_import}')
                 self.write({'import_in_progress_persisted': False})
                 self.env.cr.commit()
                 
-                # Clean up any orphaned crons
+
                 cron_name_pattern = f'WooCommerce Import - {self.name}%'
                 crons = self.env['ir.cron'].sudo().search([
                     ('name', 'like', cron_name_pattern)
@@ -1214,19 +1213,19 @@ class WooCommerceConnection(models.Model):
         if not self.import_in_progress_persisted:
             raise UserError(_('No import is currently running.'))
         
-        # Reset import state
+
         self.write({
             'import_in_progress_persisted': False,
         })
         self.env.cr.commit()
         
-        # Delete the cron job
+
         cron_name = f'WooCommerce Import - {self.name}'
         cron = self.env['ir.cron'].sudo().search([('name', '=', cron_name)], limit=1)
         if cron:
             cron.sudo().unlink()
         
-        # Try to update wizard log if it exists
+
         try:
             wizard = self.env['woocommerce.import.wizard'].browse(self.active_import_wizard_id.id) if self.active_import_wizard_id else False
             if wizard and wizard.exists():
@@ -1247,22 +1246,22 @@ class WooCommerceConnection(models.Model):
     def _parse_woocommerce_error(self, error_details):
         """Parse WooCommerce API error and return user-friendly message"""
         try:
-            # Extract the main error message
+
             error_message = error_details.get('message', 'Unknown error')
             
-            # Check for specific error types
+
             error_code = error_details.get('code', '')
             error_data = error_details.get('data', {})
             
-            # Handle invalid parameter errors
+
             if 'invalid' in error_code.lower() or 'invalid' in error_message.lower():
                 params = error_data.get('params', {})
                 details = error_data.get('details', {})
                 
-                # Build a friendly message
+
                 friendly_msg = _('Invalid product data:\n\n')
                 
-                # Check for specific field errors
+
                 if 'status' in params or 'status' in details:
                     friendly_msg += _('• Status: Please select a valid status (Draft, Pending, Private, or Published)\n')
                 
@@ -1272,7 +1271,7 @@ class WooCommerceConnection(models.Model):
                 if 'price' in params or 'regular_price' in params:
                     friendly_msg += _('• Price: Please enter a valid price\n')
                 
-                # Add the original message if we couldn't parse it
+
                 if friendly_msg == _('Invalid product data:\n\n'):
                     friendly_msg += error_message
                 else:
@@ -1280,7 +1279,7 @@ class WooCommerceConnection(models.Model):
                 
                 return friendly_msg
             
-            # Handle other errors
+
             return _('WooCommerce Error: %s') % error_message
             
         except Exception as e:
@@ -1290,10 +1289,10 @@ class WooCommerceConnection(models.Model):
     def _parse_woocommerce_error_text(self, error_text):
         """Parse WooCommerce API error text and return user-friendly message"""
         try:
-            # Try to extract JSON from text
+
             if '{' in error_text:
                 import json
-                # Try to find JSON in the text
+
                 start = error_text.find('{')
                 end = error_text.rfind('}') + 1
                 if start >= 0 and end > start:
@@ -1301,11 +1300,11 @@ class WooCommerceConnection(models.Model):
                     error_details = json.loads(json_str)
                     return self._parse_woocommerce_error(error_details)
             
-            # If no JSON found, return a generic message
+
             if 'status' in error_text.lower() and 'string' in error_text.lower():
                 return _('Invalid Status: Please select a valid status (Draft, Pending, Private, or Published) in the product form.')
             
-            return _('WooCommerce Error: %s') % error_text[:200]  # Limit length
+            return _('WooCommerce Error: %s') % error_text[:200]
             
         except Exception as e:
             _logger.warning(f"Error parsing WooCommerce error text: {e}")

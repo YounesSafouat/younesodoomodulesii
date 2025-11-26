@@ -69,14 +69,13 @@
                                 </div>
                             </button>
                         </div>
-                        
+
                         <div class="oe_title">
                             <h1>
                                 <field name="name" placeholder="Connection Name"/>
                             </h1>
                         </div>
-                        
-                        <!-- Import Progress Section -->
+
                         <div class="alert alert-info" invisible="not import_in_progress">
                             <h4>
                                 <i class="fa fa-spinner fa-spin"/> Import in Progress
@@ -84,7 +83,7 @@
                             <p><field name="import_status"/></p>
                             <p><strong>Progress:</strong> <field name="import_progress" widget="progressbar"/></p>
                         </div>
-                        
+
                         <group>
                             <group>
                                 <field name="store_url" placeholder="https://yourstore.com"/>
@@ -97,21 +96,21 @@
                                 <field name="last_sync" readonly="1"/>
                             </group>
                         </group>
-                        
+
                         <group string="WordPress Authentication (for Media Upload)">
                             <group>
                                 <field name="wp_username" placeholder="admin"/>
                                 <field name="wp_application_password" password="True" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"/>
                             </group>
                         </group>
-                        
+
                         <group string="Default Settings">
                             <group>
                                 <field name="default_sync_direction"/>
                                 <field name="image_upload_method"/>
                             </group>
                         </group>
-                        
+
                         <notebook>
                             <page string="Connection Status" name="status">
                                 <group>
@@ -123,7 +122,7 @@
                                            invisible="not import_log"/>
                                 </group>
                             </page>
-                            
+
                             <page string="Products" name="products">
                                 <field name="product_ids" readonly="1">
                                     <list>
@@ -139,7 +138,7 @@
                                     </list>
                                 </field>
                             </page>
-                            
+
                             <page string="Field Mappings" name="field_mappings">
                                 <div class="row mt16 mb16">
                                     <div class="col-12">
@@ -185,7 +184,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Connection Search View -->
         <record id="view_woocommerce_connection_search" model="ir.ui.view">
             <field name="name">woocommerce.connection.search</field>
             <field name="model">woocommerce.connection</field>
@@ -207,7 +205,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Connection Action -->
         <record id="action_woocommerce_connection" model="ir.actions.act_window">
             <field name="name">WooCommerce Connections</field>
             <field name="res_model">woocommerce.connection</field>

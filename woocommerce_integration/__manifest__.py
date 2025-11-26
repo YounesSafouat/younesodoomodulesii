@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 {
     'name': 'WooCommerce Integration',
     'version': '1.0.0',
@@ -21,6 +20,7 @@ Features:
 * Product mapping and attribute handling
 * Bulk import operations
 * Connection testing
+* Webhook support for order synchronization
 """,
     'author': 'NELY',
     'website': 'https://nely.ma',
@@ -48,9 +48,14 @@ Features:
         'views/product_template_views.xml',
         'views/menu.xml',
         'views/woocommerce_order_webhook_views.xml',
-        # 'views/res_config_settings.xml',  # Temporarily disabled
     ],
     'demo': [],
+    'test': [
+        'tests/test_woocommerce_connection.py',
+        'tests/test_woocommerce_product.py',
+        'tests/test_woocommerce_webhook.py',
+        'tests/test_woocommerce_import_wizard.py',
+    ],
     'installable': True,
     'auto_install': False,
     'application': True,

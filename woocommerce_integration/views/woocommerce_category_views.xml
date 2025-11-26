@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- WooCommerce Category List View -->
+
         <record id="view_woocommerce_category_tree" model="ir.ui.view">
             <field name="name">woocommerce.category.tree</field>
             <field name="model">woocommerce.category</field>
@@ -25,7 +24,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Category Form View -->
         <record id="view_woocommerce_category_form" model="ir.ui.view">
             <field name="name">woocommerce.category.form</field>
             <field name="model">woocommerce.category</field>
@@ -56,15 +54,15 @@
                                 <field name="wc_count"/>
                             </group>
                         </group>
-                        
+
                         <group string="Description" invisible="not description">
                             <field name="description" nolabel="1"/>
                         </group>
-                        
+
                         <group string="Image" invisible="not wc_image_url">
                             <field name="wc_image_url" widget="url"/>
                         </group>
-                        
+
                         <group>
                             <field name="last_sync" readonly="1"/>
                         </group>
@@ -73,7 +71,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Category Search View -->
         <record id="view_woocommerce_category_search" model="ir.ui.view">
             <field name="name">woocommerce.category.search</field>
             <field name="model">woocommerce.category</field>
@@ -101,7 +98,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Category Action -->
         <record id="action_woocommerce_category" model="ir.actions.act_window">
             <field name="name">WooCommerce Categories</field>
             <field name="res_model">woocommerce.category</field>
@@ -118,7 +114,6 @@
             </field>
         </record>
 
-        <!-- Bulk Map Categories Server Action -->
         <record id="action_bulk_map_categories" model="ir.actions.server">
             <field name="name">Bulk Map Categories</field>
             <field name="model_id" ref="model_woocommerce_category"/>
@@ -144,4 +139,3 @@ else:
 
     </data>
 </odoo>
-

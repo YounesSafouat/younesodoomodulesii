@@ -2,7 +2,6 @@
 <odoo>
     <data>
 
-        <!-- Conflict Resolution Wizard Form View -->
         <record id="woocommerce_conflict_resolution_wizard_form_view" model="ir.ui.view">
             <field name="name">woocommerce.conflict.resolution.wizard.form</field>
             <field name="model">woocommerce.conflict.resolution.wizard</field>
@@ -11,7 +10,7 @@
                     <div class="oe_title">
                         <h1>Sync Conflicts Resolution</h1>
                     </div>
-                    
+
                     <group>
                         <group>
                             <field name="resolution_method" widget="radio" string="Resolution Method"/>
@@ -21,9 +20,9 @@
                             <field name="auto_apply"/>
                         </group>
                     </group>
-                    
+
                     <field name="conflict_details" readonly="1"/>
-                    
+
                     <field name="product_ids" readonly="1">
                         <list>
                             <field name="name"/>
@@ -32,7 +31,7 @@
                             <field name="wc_last_error"/>
                         </list>
                     </field>
-                    
+
                     <footer>
                         <button name="action_resolve_conflicts" type="object" 
                                 string="Resolve Conflicts" 
@@ -47,7 +46,6 @@
             </field>
         </record>
 
-        <!-- Conflict Resolution Wizard Action -->
         <record id="action_woocommerce_conflict_resolution_wizard" model="ir.actions.act_window">
             <field name="name">Resolve WooCommerce Conflicts</field>
             <field name="res_model">woocommerce.conflict.resolution.wizard</field>
@@ -58,4 +56,3 @@
 
     </data>
 </odoo>
-

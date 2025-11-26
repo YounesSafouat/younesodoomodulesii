@@ -96,7 +96,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
         """Set default values"""
         res = super().default_get(fields_list)
         
-        # Get the first active connection as default
+
         connection = self.env['woocommerce.connection'].search([
             ('active', '=', True),
             ('connection_status', '=', 'success')
@@ -126,7 +126,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
         if self.connection_id.connection_status != 'success':
             raise UserError(_('Please test the connection first before importing products.'))
         
-        # Get products to import
+
         if self.selected_product_ids:
             products = self.selected_product_ids
         else:
@@ -140,7 +140,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
         if total_count == 0:
             raise UserError(_('No products found to import.'))
         
-        # Initialize the import
+
         self.write({
             'import_status': 'running',
             'import_log': _('Starting import of %d products in batches of %d...\n\n') % (total_count, self.batch_size),
@@ -149,9 +149,9 @@ class OdooToWooCommerceWizard(models.TransientModel):
             'total_products': total_count,
             'progress_percentage': 0.0,
         })
-        self.env.cr.commit()  # Commit to show initial status
+        self.env.cr.commit()
         
-        # Process in batches
+
         imported_count = 0
         error_count = 0
         batch_num = 0
@@ -187,7 +187,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
                     })
                     _logger.error(f"Error importing product {product.name}: {str(e)}")
             
-            # Update progress after each batch
+
             processed = batch_end
             progress = (processed / total_count) * 100
             self.write({
@@ -195,11 +195,11 @@ class OdooToWooCommerceWizard(models.TransientModel):
                 'error_count': error_count,
                 'progress_percentage': progress,
             })
-            self.env.cr.commit()  # Commit after each batch to show progress
+            self.env.cr.commit()
             
             _logger.info(f"Batch {batch_num} completed: {imported_count} imported, {error_count} errors, {progress:.1f}% done")
         
-        # Update final status
+
         self.write({
             'import_status': 'completed' if error_count == 0 else 'error',
             'imported_count': imported_count,
@@ -211,7 +211,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
                           _('Errors: %d\n') % error_count
         })
         
-        # Show notification and return to the wizard to show final results
+
         self.env['bus.bus']._sendone(
             self.env.user.partner_id,
             'simple_notification',
@@ -235,7 +235,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
     def _import_single_product(self, product):
         """Import a single product to WooCommerce"""
         try:
-            # Check if product already exists in WooCommerce
+
             existing_wc_product = self.env['woocommerce.product'].search([
                 ('odoo_product_id', '=', product.id),
                 ('connection_id', '=', self.connection_id.id)
@@ -248,7 +248,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
                     'action': 'Skipped'
                 }
             
-            # Create or update WooCommerce product record
+
             wc_product_vals = self._prepare_woocommerce_product_data(product)
             
             if existing_wc_product:
@@ -259,11 +259,11 @@ class OdooToWooCommerceWizard(models.TransientModel):
                 wc_product = self.env['woocommerce.product'].create(wc_product_vals)
                 action = 'Imported'
             
-            # Import images if requested
+
             if self.include_images and product.image_1920:
                 self._import_product_image(product, wc_product)
             
-            # Push to WooCommerce store
+
             wc_product._sync_to_woocommerce_store()
             
             return {
@@ -283,13 +283,13 @@ class OdooToWooCommerceWizard(models.TransientModel):
     def _prepare_woocommerce_product_data(self, product):
         """Prepare WooCommerce product data from Odoo product"""
         return {
-            'wc_product_id': 0,  # Will be updated after creation in WooCommerce
+            'wc_product_id': 0,
             'connection_id': self.connection_id.id,
             'name': product.name,
             'wc_sku': product.default_code or '',
             'price': product.list_price,
             'regular_price': product.list_price,
-            'sale_price': 0,  # Will be set if there's a sale price
+            'sale_price': 0,
             'stock_status': 'instock' if product.qty_available > 0 else 'outofstock',
             'status': 'publish' if product.sale_ok else 'draft',
             'featured': False,
@@ -304,11 +304,11 @@ class OdooToWooCommerceWizard(models.TransientModel):
         if not product.image_1920:
             return
         
-        # Create WooCommerce product image record
+
         image_vals = {
             'product_id': wc_product.id,
             'name': product.name,
-            'sequence': 5,  # Main image
+            'sequence': 5,
             'is_main_image': True,
             'image_1920': product.image_1920,
             'alt_text': product.name,
@@ -317,7 +317,7 @@ class OdooToWooCommerceWizard(models.TransientModel):
         
         image_record = self.env['woocommerce.product.image'].create(image_vals)
         
-        # Try to sync the image
+
         try:
             image_record.action_sync_to_woocommerce()
         except Exception as e:

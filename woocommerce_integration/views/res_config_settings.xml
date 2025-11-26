@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Settings view temporarily disabled due to XPath compatibility issues -->
-        <!-- Will be re-enabled in a future update -->
+
     </data>
 </odoo>

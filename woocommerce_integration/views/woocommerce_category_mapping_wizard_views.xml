@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- WooCommerce Category Mapping Wizard Form View -->
+
         <record id="view_woocommerce_category_mapping_wizard_form" model="ir.ui.view">
             <field name="name">woocommerce.category.mapping.wizard.form</field>
             <field name="model">woocommerce.category.mapping.wizard</field>
@@ -11,33 +10,33 @@
                     <div class="oe_title">
                         <h1>Map WooCommerce Category</h1>
                     </div>
-                    
+
                     <group>
                         <group>
                             <field name="wc_category_id" readonly="1"/>
                             <field name="connection_id" readonly="1"/>
                         </group>
                     </group>
-                    
+
                     <separator string="Mapping Options"/>
-                    
+
                     <group>
                         <field name="create_new_category"/>
                     </group>
-                    
+
                     <group invisible="create_new_category">
                         <group>
                             <field name="odoo_category_id" 
                                    help="Select an existing Odoo category to map to this WooCommerce category"/>
                         </group>
                     </group>
-                    
+
                     <group invisible="not create_new_category">
                         <group>
                             <field name="new_category_name" required="create_new_category"/>
                         </group>
                     </group>
-                    
+
                     <footer>
                         <button name="action_map_category" type="object" 
                                 string="Map Category" 
@@ -48,7 +47,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Category Mapping Wizard Action -->
         <record id="action_woocommerce_category_mapping_wizard" model="ir.actions.act_window">
             <field name="name">Map Category</field>
             <field name="res_model">woocommerce.category.mapping.wizard</field>

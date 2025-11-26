@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- WooCommerce Product Tree View -->
+
         <record id="view_woocommerce_product_tree" model="ir.ui.view">
             <field name="name">woocommerce.product.tree</field>
             <field name="model">woocommerce.product</field>
@@ -27,7 +26,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Product Form View -->
         <record id="view_woocommerce_product_form" model="ir.ui.view">
             <field name="name">woocommerce.product.form</field>
             <field name="model">woocommerce.product</field>
@@ -79,13 +77,13 @@
                                 <field name="variant_count" widget="statinfo" string="Variations"/>
                             </button>
                         </div>
-                        
+
                         <div class="oe_title">
                             <h1>
                                 <field name="name"/>
                             </h1>
                         </div>
-                        
+
                         <group string="WooCommerce Store Settings">
                             <group>
                                 <field name="connection_id" 
@@ -95,7 +93,7 @@
                                        help="Choose which WooCommerce store this product belongs to"/>
                             </group>
                         </group>
-                        
+
                         <group string="Product Information">
                             <group>
                                 <field name="wc_product_id"/>
@@ -111,7 +109,7 @@
                                 <field name="featured"/>
                             </group>
                         </group>
-                        
+
                         <group string="Pricing">
                             <group>
                                 <field name="price"/>
@@ -124,7 +122,7 @@
                                        invisible="not sync_error"/>
                             </group>
                         </group>
-                        
+
                         <notebook>
                             <page string="Categories" name="categories">
                                 <group>
@@ -136,13 +134,13 @@
                                     <field name="categories" readonly="1" widget="text"/>
                                 </group>
                             </page>
-                            
+
                             <page string="Attributes" name="attributes">
                                 <group>
                                     <field name="attributes" readonly="1" widget="text"/>
                                 </group>
                             </page>
-                            
+
                             <page string="Images" name="images">
                                 <group string="WooCommerce Media">
                                     <field
@@ -157,12 +155,12 @@
                                         colspan="2"
                                     />
                                 </group>
-                                
+
                                 <group string="Raw Images Data" invisible="not images">
                                     <field name="images" readonly="1" widget="text"/>
                                 </group>
                             </page>
-                            
+
                             <page string="Variations" name="variations" invisible="not is_variable_product">
                                 <group>
                                     <field name="is_variable_product" invisible="1"/>
@@ -196,7 +194,7 @@
                                     </field>
                                 </group>
                             </page>
-                            
+
                             <page string="Raw Data" name="raw_data">
                                 <group>
                                     <field name="wc_data_formatted" readonly="1" widget="text" 
@@ -210,7 +208,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Product Search View -->
         <record id="view_woocommerce_product_search" model="ir.ui.view">
             <field name="name">woocommerce.product.search</field>
             <field name="model">woocommerce.product</field>
@@ -229,7 +226,6 @@
                     <separator/>
                     <filter string="With Odoo Product" name="with_odoo" domain="[('odoo_product_id', '!=', False)]"/>
                     <filter string="Without Odoo Product" name="without_odoo" domain="[('odoo_product_id', '=', False)]"/>
-                    <filter string="Variable Products" name="variable" domain="[('is_variable_product', '=', True)]"/>
                     <group expand="0" string="Group By">
                         <filter string="Connection" name="group_connection" context="{'group_by': 'connection_id'}"/>
                         <filter string="Stock Status" name="group_stock" context="{'group_by': 'stock_status'}"/>
@@ -239,7 +235,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Product Action -->
         <record id="action_woocommerce_product" model="ir.actions.act_window">
             <field name="name">WooCommerce Products</field>
             <field name="res_model">woocommerce.product</field>

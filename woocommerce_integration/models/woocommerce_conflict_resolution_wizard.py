@@ -87,13 +87,13 @@ class WooCommerceConflictResolutionWizard(models.TransientModel):
         for product in self.product_ids:
             try:
                 if self.resolution_method == 'use_odoo':
-                    # Force sync Odoo data to WooCommerce
+
                     product._sync_to_woocommerce()
                     resolved_count += 1
                     
                 elif self.resolution_method == 'use_woocommerce':
-                    # Import latest data from WooCommerce
-                    # This would typically fetch from WooCommerce API
+
+
                     product.write({
                         'wc_sync_status': 'synced',
                         'wc_last_error': False,
@@ -101,7 +101,7 @@ class WooCommerceConflictResolutionWizard(models.TransientModel):
                     resolved_count += 1
                     
                 elif self.resolution_method == 'manual':
-                    # Mark for manual review
+
                     product.write({
                         'wc_sync_status': 'conflict',
                         'wc_last_error': 'Requires manual review - conflict resolution wizard used',
@@ -116,7 +116,7 @@ class WooCommerceConflictResolutionWizard(models.TransientModel):
                     'wc_last_error': str(e),
                 })
         
-        # Show result notification
+
         if error_count == 0:
             message = _('Successfully resolved conflicts for %d products.') % resolved_count
             message_type = 'success'
@@ -141,15 +141,15 @@ class WooCommerceConflictResolutionWizard(models.TransientModel):
         if not self.product_ids:
             raise ValidationError(_('No products selected.'))
         
-        # Create a detailed conflict report
+
         conflict_data = []
         for product in self.product_ids:
             conflict_data.append({
                 'product_name': product.name,
                 'odoo_price': product.list_price,
-                'wc_price': 'N/A',  # Would be fetched from WooCommerce
+                'wc_price': 'N/A',
                 'odoo_stock': getattr(product, 'qty_available', 0),
-                'wc_stock': 'N/A',  # Would be fetched from WooCommerce
+                'wc_stock': 'N/A',
                 'last_sync': product.wc_last_sync,
                 'error': product.wc_last_error,
             })

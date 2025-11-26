@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- Extend Product Template Form View -->
+
         <record id="product_template_form_view_woocommerce" model="ir.ui.view">
             <field name="name">product.template.form.view.woocommerce</field>
             <field name="model">product.template</field>
             <field name="inherit_id" ref="product.product_template_only_form_view"/>
             <field name="arch" type="xml">
-                
-                <!-- Add WooCommerce fields in General Information tab for easy access -->
+
                 <xpath expr="//group[@name='group_general']" position="after">
                     <group string="WooCommerce Settings" name="woocommerce_quick_settings">
                         <group>
@@ -33,11 +31,10 @@
                         </group>
                     </group>
                 </xpath>
-                
-                <!-- Add WooCommerce tab -->
+
                 <xpath expr="//notebook" position="inside">
                     <page string="WooCommerce" name="woocommerce">
-                        
+
                         <group>
                             <group>
                                 <field name="wc_sync_enabled" string="Enable WooCommerce Sync"/>
@@ -49,7 +46,7 @@
                                 <field name="wc_product_url" widget="url" readonly="1" string="WooCommerce URL" invisible="not wc_product_url"/>
                             </group>
                         </group>
-                        
+
                         <group string="Advanced Settings" invisible="not wc_sync_enabled">
                             <group>
                                 <field name="wc_auto_sync" string="Auto Sync on Changes"/>
@@ -60,11 +57,11 @@
                                 <field name="wc_last_sync" readonly="1" string="Last Sync"/>
                             </group>
                         </group>
-                        
+
                         <group string="Error Information" invisible="wc_sync_status != 'error'">
                             <field name="wc_last_error" readonly="1" widget="text"/>
                         </group>
-                        
+
                         <div class="oe_button_box" name="woocommerce_button_box">
                             <button name="action_sync_to_woocommerce" type="object" 
                                     class="oe_stat_button" icon="fa-refresh"
@@ -75,7 +72,7 @@
                                 </div>
                             </button>
                         </div>
-                        
+
                         <group string="Image Management" invisible="not wc_sync_enabled">
                             <group>
                                 <field name="wc_image_sync_enabled" string="Include Images in Sync"/>
@@ -89,21 +86,19 @@
                                 </button>
                             </group>
                         </group>
-                        
+
                     </page>
                 </xpath>
-                
+
             </field>
         </record>
 
-        <!-- Extend Product Template Tree View -->
         <record id="product_template_list_view_woocommerce" model="ir.ui.view">
             <field name="name">product.template.list.view.woocommerce</field>
             <field name="model">product.template</field>
             <field name="inherit_id" ref="product.product_template_tree_view"/>
             <field name="arch" type="xml">
-                
-                <!-- Add WooCommerce columns -->
+
                 <xpath expr="//field[@name='list_price']" position="after">
                     <field name="wc_sync_enabled" widget="boolean_toggle" optional="hide" string="WC Sync"/>
                     <field name="wc_sync_status" widget="badge" optional="hide" string="Status"
@@ -113,18 +108,16 @@
                     <field name="wc_sync_direction" optional="hide" string="Direction"/>
                     <field name="wc_last_sync" optional="hide" string="Last Sync"/>
                 </xpath>
-                
+
             </field>
         </record>
 
-        <!-- Extend Product Template Search View -->
         <record id="product_template_search_view_woocommerce" model="ir.ui.view">
             <field name="name">product.template.search.view.woocommerce</field>
             <field name="model">product.template</field>
             <field name="inherit_id" ref="product.product_template_search_view"/>
             <field name="arch" type="xml">
-                
-                <!-- Add WooCommerce filters -->
+
                 <xpath expr="//filter[@name='filter_to_sell']" position="after">
                     <separator/>
                     <filter string="WooCommerce Sync Enabled" name="wc_sync_enabled" domain="[('wc_sync_enabled', '=', True)]"/>
@@ -134,12 +127,10 @@
                     <filter string="Sync Conflict" name="wc_conflict" domain="[('wc_sync_status', '=', 'conflict')]"/>
                     <filter string="WooCommerce Products" name="wc_products" domain="[('wc_product_id', '!=', False)]"/>
                 </xpath>
-                
-                
+
             </field>
         </record>
 
-        <!-- Batch Actions for Product Template -->
         <record id="action_batch_sync_to_woocommerce" model="ir.actions.server">
             <field name="name">Sync Selected Products to WooCommerce</field>
             <field name="model_id" ref="product.model_product_template"/>
@@ -170,4 +161,3 @@ else:
 
     </data>
 </odoo>
-

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import json
 import logging
 import hmac
@@ -17,27 +15,13 @@ class WooCommerceWebhookController(http.Controller):
         """Handle incoming WooCommerce webhooks"""
         _logger.info(f'Webhook controller called with webhook_id: {webhook_id}')
         try:
-            # Get webhook configuration
             webhook = request.env['woocommerce.order.webhook'].browse(webhook_id)
             if not webhook.exists() or not webhook.active:
                 _logger.warning(f'Webhook {webhook_id} not found or inactive')
                 return request.make_response('Webhook not found or inactive', status=404)
             
-            # Verify webhook signature if secret is configured
-            # TEMPORARILY DISABLED for testing - comment out this entire block
-            # if webhook.webhook_secret:
-            #     # Only verify signature if it's provided in headers
-            #     signature_header = request.httprequest.headers.get('X-WC-Webhook-Signature')
-            #     if signature_header:
-            #         if not self._verify_webhook_signature(request.httprequest, webhook.webhook_secret):
-            #             _logger.warning(f'Invalid webhook signature for webhook {webhook_id}')
-            #             return request.make_response('Invalid webhook signature', status=403)
-            #     else:
-            #         # If secret is set but no signature provided, accept the request for testing
-            #         _logger.info(f'Webhook secret configured but no signature provided, accepting for testing')
             _logger.info(f'Signature verification disabled for testing')
             
-            # Handle GET requests (webhook testing)
             if request.httprequest.method == 'GET':
                 return request.make_response(
                     json.dumps({
@@ -48,15 +32,12 @@ class WooCommerceWebhookController(http.Controller):
                     headers=[('Content-Type', 'application/json')]
                 )
             
-            # Get webhook data - for type='http', we need to parse JSON manually
             webhook_data = {}
             try:
-                # Get raw bytes first
                 body_bytes = request.httprequest.get_data()
                 _logger.info(f'Received raw body (bytes): {len(body_bytes)} bytes')
                 
                 if body_bytes:
-                    # Convert to string and parse
                     body = body_bytes.decode('utf-8')
                     _logger.info(f'Received raw webhook data: {body[:500] if body else "No body"}')
                     
@@ -64,7 +45,6 @@ class WooCommerceWebhookController(http.Controller):
                     _logger.info(f'Successfully parsed JSON data: {list(webhook_data.keys()) if isinstance(webhook_data, dict) else type(webhook_data)}')
                 else:
                     _logger.warning('No request body received - WooCommerce may be sending an empty request or the webhook is testing')
-                    # For testing purposes, return success with empty data
                     return request.make_response(
                         json.dumps({
                             'status': 'success',
@@ -82,7 +62,6 @@ class WooCommerceWebhookController(http.Controller):
             
             _logger.info(f'Received webhook for {webhook.name}, data type: {type(webhook_data)}')
             
-            # Process webhook data with sudo to bypass access rights
             result = webhook.sudo().process_webhook_data(webhook_data)
             
             return request.make_response(
@@ -108,17 +87,14 @@ class WooCommerceWebhookController(http.Controller):
         if not signature:
             return False
         
-        # Get request body
         body = request.get_data()
         
-        # Calculate expected signature
         expected_signature = hmac.new(
             secret.encode('utf-8'),
             body,
             hashlib.sha256
         ).hexdigest()
         
-        # Compare signatures
         return hmac.compare_digest(signature, expected_signature)
     
     @http.route('/woocommerce/webhook/test/<int:webhook_id>', type='http', auth='public', methods=['GET'], csrf=False)

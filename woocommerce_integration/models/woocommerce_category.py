@@ -149,7 +149,7 @@ class WooCommerceCategory(models.Model):
         
         self.write(vals)
         
-        # Update parent relationship
+
         if vals['wc_parent_id']:
             parent = self.search([
                 ('wc_category_id', '=', vals['wc_parent_id']),

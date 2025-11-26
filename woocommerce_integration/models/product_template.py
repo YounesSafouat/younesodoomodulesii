@@ -101,16 +101,16 @@ class ProductTemplate(models.Model):
         products = super(ProductTemplate, self).create(vals_list)
         
         for product, vals in zip(products, vals_list):
-            # If product already has WooCommerce ID (imported from WooCommerce)
+
             if vals.get('wc_product_id') and vals.get('wc_connection_id'):
                 product.wc_sync_status = 'synced'
                 product.wc_last_sync = fields.Datetime.now()
-            # If sync is enabled and connection is set, auto-create in WooCommerce
+
             elif vals.get('wc_sync_enabled') and vals.get('wc_connection_id'):
                 try:
-                    # Create WooCommerce product record first
+
                     wc_product_vals = {
-                        'wc_product_id': 0,  # Will be updated after WooCommerce creation
+                        'wc_product_id': 0,
                         'connection_id': vals['wc_connection_id'],
                         'odoo_product_id': product.id,
                         'name': product.name,
@@ -123,7 +123,7 @@ class ProductTemplate(models.Model):
                     }
                     wc_product = self.env['woocommerce.product'].create(wc_product_vals)
                     
-                    # Sync to WooCommerce store
+
                     wc_product._sync_to_woocommerce_store()
                     
                     _logger.info(f"Auto-created product in WooCommerce: {product.name} (ID: {wc_product.wc_product_id})")
@@ -149,23 +149,23 @@ class ProductTemplate(models.Model):
                 should_sync = False
                 mapped_fields = []
                 
-                # Check standard fields
+
                 sync_needed = any(key in vals for key in sync_fields)
                 if sync_needed:
                     product._update_woocommerce_product_table(vals)
                     should_sync = True
                 
-                # Check image fields
+
                 image_sync_needed = any(key in vals for key in image_fields)
                 if image_sync_needed and product.wc_image_sync_enabled:
                     should_sync = True
-                    # Auto-sync images when they change
+
                     _logger.info(f"Image changed for product {product.name}, triggering auto-sync")
-                    # Create/update WooCommerce product image record if main image changed
+
                     if 'image_1920' in vals and product.wc_product_id and product.wc_connection_id:
                         self._process_product_image_for_sync(product)
                 
-                # Check custom mapped fields (from field mappings)
+
                 if product.wc_connection_id:
                     mapped_fields = product._get_mapped_odoo_fields()
                     if any(key in vals for key in mapped_fields):
@@ -173,7 +173,7 @@ class ProductTemplate(models.Model):
                         should_sync = True
                 
                 if should_sync:
-                    # Update status without triggering another write cycle
+
                     self.env.cr.execute("""
                         UPDATE product_template 
                         SET wc_sync_status = 'pending_update',
@@ -181,7 +181,7 @@ class ProductTemplate(models.Model):
                         WHERE id = %s
                     """, (fields.Datetime.now(), product.id))
                     
-                    # Pass updated fields context for partial sync
+
                     updated_fields = [key for key in vals.keys() if key in sync_fields + mapped_fields]
                     product.with_context(updated_fields=updated_fields)._queue_woocommerce_sync()
         
@@ -194,14 +194,14 @@ class ProductTemplate(models.Model):
         if not self.wc_connection_id:
             return []
         
-        # Get all active field mappings for this connection (Odoo to WooCommerce direction)
+
         mappings = self.env['woocommerce.field.mapping'].search([
             ('connection_id', '=', self.wc_connection_id.id),
             ('is_active', '=', True),
             ('mapping_direction', 'in', ['odoo_to_wc', 'bidirectional']),
         ])
         
-        # Extract Odoo field names
+
         field_names = [m.odoo_field_name for m in mappings if m.odoo_field_name]
         
         return field_names
@@ -229,11 +229,11 @@ class ProductTemplate(models.Model):
             raise ValidationError(_('No WooCommerce connection configured.'))
         
         try:
-            # Check if this is a partial sync (triggered from WooCommerce product)
+
             updated_fields = self.env.context.get('updated_fields', [])
             
             if updated_fields and self.wc_product_id:
-                # Use partial sync through WooCommerce product
+
                 wc_product = self.env['woocommerce.product'].search([
                     ('wc_product_id', '=', self.wc_product_id),
                     ('connection_id', '=', self.wc_connection_id.id)
@@ -242,7 +242,7 @@ class ProductTemplate(models.Model):
                     wc_product.with_context(updated_fields=updated_fields)._sync_to_woocommerce_store()
                     return
             
-            # Full sync (manual or initial sync)
+
             product_data = self._prepare_woocommerce_data()
             
             if self.wc_product_id:
@@ -288,10 +288,10 @@ class ProductTemplate(models.Model):
             ('connection_id', '=', self.wc_connection_id.id)
         ])
         
-        # Check if stock is mapped, if not, don't include it
+
         stock_quantity = None
         if self.wc_connection_id:
-            # Check if there's a mapping for stock quantity
+
             stock_mappings = self.env['woocommerce.field.mapping'].search([
                 ('connection_id', '=', self.wc_connection_id.id),
                 ('is_active', '=', True),
@@ -300,7 +300,7 @@ class ProductTemplate(models.Model):
             ])
             
             if stock_mappings:
-                # Use mapped field value
+
                 for mapping in stock_mappings:
                     if mapping.odoo_field_name:
                         try:
@@ -311,8 +311,8 @@ class ProductTemplate(models.Model):
                         except (ValueError, TypeError, AttributeError):
                             continue
             
-            # If no mapping found, don't send stock data at all
-            # This prevents overwriting WooCommerce stock settings
+
+
         
         if wc_product:
             regular_price = str(float(wc_product.regular_price)) if wc_product.regular_price else '0.00'
@@ -349,7 +349,7 @@ class ProductTemplate(models.Model):
             'downloadable': False,
         }
         
-        # Only include stock if it's mapped
+
         if stock_quantity is not None:
             data['manage_stock'] = True
             data['stock_quantity'] = stock_quantity
@@ -360,21 +360,21 @@ class ProductTemplate(models.Model):
         if sale_price and float(sale_price) > 0:
             data['sale_price'] = sale_price
         
-        # Handle image sync
+
         _logger.info(f"Image sync check - wc_image_sync_enabled: {self.wc_image_sync_enabled}, has image_1920: {bool(self.image_1920)}")
         
         images_to_sync = []
         
-        # Check main product image
+
         if self.wc_image_sync_enabled and self.image_1920:
             _logger.info(f"Processing main product image for {self.name}")
             
-            # Use the configured image upload method
+
             if self.wc_connection_id.image_upload_method == 'wordpress_media':
-                # For WordPress Media Library, we need to upload the image first
-                # This should be done through the WooCommerce product image system
+
+
                 _logger.info(f"WordPress Media Library method requires individual image sync first")
-            else:  # woocommerce_base64
+            else:
                 image_data = self._process_product_image()
                 if image_data:
                     images_to_sync.append({
@@ -386,7 +386,7 @@ class ProductTemplate(models.Model):
                 else:
                     _logger.warning(f"Failed to process main product image for product {self.name}")
         
-        # Check WooCommerce product images
+
         if self.wc_image_sync_enabled:
             wc_product = self.env['woocommerce.product'].search([
                 ('odoo_product_id', '=', self.id),
@@ -396,9 +396,9 @@ class ProductTemplate(models.Model):
             if wc_product and wc_product.product_image_ids:
                 _logger.info(f"Found {len(wc_product.product_image_ids)} WooCommerce product images for {self.name}")
                 for wc_image in wc_product.product_image_ids:
-                    # Use the configured image upload method
+
                     if self.wc_connection_id.image_upload_method == 'wordpress_media':
-                        # WordPress Media Library approach - use Media ID
+
                         if wc_image.sync_status == 'synced' and wc_image.wc_image_id and wc_image.wc_image_url:
                             _logger.info(f"Using WordPress Media Library image: {wc_image.name} (ID: {wc_image.wc_image_id})")
                             images_to_sync.append({
@@ -410,8 +410,8 @@ class ProductTemplate(models.Model):
                             _logger.info(f"Added WordPress Media Library image to sync data: {wc_image.name}")
                         elif wc_image.image_1920 and wc_image.sync_status != 'synced':
                             _logger.info(f"Image {wc_image.name} needs to be synced to WordPress Media Library first")
-                    else:  # woocommerce_base64
-                        # Base64 approach - process image directly
+                    else:
+
                         if wc_image.image_1920:
                             _logger.info(f"Processing WooCommerce product image: {wc_image.name}")
                             image_data = self._process_woocommerce_product_image(wc_image)
@@ -431,33 +431,33 @@ class ProductTemplate(models.Model):
         else:
             _logger.info(f"No images to sync - wc_image_sync_enabled: {self.wc_image_sync_enabled}, main image: {bool(self.image_1920)}")
         
-        # Handle custom attributes from field mappings
+
         custom_attributes = self._prepare_custom_attributes()
         
-        # Always include existing attributes from WooCommerce to prevent data loss
+
         existing_attributes = self._get_existing_woocommerce_attributes()
         if existing_attributes:
-            # Merge custom attributes with existing ones
+
             if custom_attributes:
-                # Create a map of existing attributes by slug
+
                 existing_attr_map = {attr.get('slug', attr.get('name', '')): attr for attr in existing_attributes}
                 
-                # Update existing attributes with new values from custom attributes
+
                 for custom_attr in custom_attributes:
                     attr_slug = custom_attr.get('name', '')
                     if attr_slug in existing_attr_map:
-                        # Update existing attribute with new value
+
                         existing_attr_map[attr_slug].update(custom_attr)
                     else:
-                        # Add new attribute
+
                         existing_attributes.append(custom_attr)
                 
                 data['attributes'] = existing_attributes
             else:
-                # No custom attributes, just use existing ones
+
                 data['attributes'] = existing_attributes
         elif custom_attributes:
-            # No existing attributes, just use custom ones
+
             data['attributes'] = custom_attributes
         
         return data
@@ -470,7 +470,7 @@ class ProductTemplate(models.Model):
             return []
         
         try:
-            # Get current product data from WooCommerce
+
             current_product = self.wc_connection_id.get_product(self.wc_product_id)
             if current_product and current_product.get('attributes'):
                 _logger.info(f"Retrieved {len(current_product['attributes'])} existing attributes from WooCommerce")
@@ -487,7 +487,7 @@ class ProductTemplate(models.Model):
         if not self.wc_connection_id:
             return []
         
-        # Get field mappings for Odoo to WooCommerce
+
         mappings = self.env['woocommerce.field.mapping'].search([
             ('connection_id', '=', self.wc_connection_id.id),
             ('is_active', '=', True),
@@ -497,43 +497,43 @@ class ProductTemplate(models.Model):
         attributes = []
         
         for mapping in mappings:
-            # Skip standard fields (already handled above)
+
             if mapping.odoo_field_name in ['name', 'list_price', 'default_code', 'description', 'description_sale']:
                 continue
             
-            # Only process WooCommerce attributes (starting with 'attributes.')
+
             if not mapping.wc_field_name or not mapping.wc_field_name.startswith('attributes.'):
                 continue
             
             try:
-                # Get the value from Odoo
+
                 odoo_value = getattr(self, mapping.odoo_field_name, None)
                 
                 if odoo_value is None or odoo_value == False:
                     continue
                 
-                # Convert value to string
+
                 if isinstance(odoo_value, (int, float)):
                     odoo_value = str(odoo_value)
-                elif hasattr(odoo_value, 'name'):  # Many2one field
+                elif hasattr(odoo_value, 'name'):
                     odoo_value = odoo_value.name
                 
-                # Apply reverse transformation if needed
-                # (Note: We're sending from Odoo to WC, so we might need to reverse some transformations)
+
+
                 final_value = str(odoo_value)
                 
-                # Extract attribute slug from wc_field_name (e.g., 'attributes.pa_choix-de-bois' -> 'pa_choix-de-bois')
+
                 wc_field_parts = mapping.wc_field_name.split('.')
                 if len(wc_field_parts) >= 2:
                     attr_slug = wc_field_parts[1].replace('.options', '')
                     
-                    # Ensure attribute exists in WooCommerce first
+
                     self._ensure_woocommerce_attribute_exists(attr_slug, final_value)
                     
-                    # Format for WooCommerce API - try different formats
+
                     attributes.append({
                         'name': attr_slug,
-                        'options': [final_value],  # WooCommerce expects options as array
+                        'options': [final_value],
                         'visible': True,
                         'variation': False
                     })
@@ -554,14 +554,14 @@ class ProductTemplate(models.Model):
             return
         
         try:
-            # Check if attribute exists
+
             import requests
             
             url = f"{self.wc_connection_id.store_url}/wp-json/wc/v3/products/attributes"
             headers = self.wc_connection_id._get_auth_headers()
             
-            # Search for existing attribute
-            response = requests.get(url, headers=headers, timeout=600)  # 10 minutes
+
+            response = requests.get(url, headers=headers, timeout=600)
             
             if response.status_code == 200:
                 attributes = response.json()
@@ -573,22 +573,22 @@ class ProductTemplate(models.Model):
                         break
                 
                 if existing_attr:
-                    # Attribute exists, check if option exists
+
                     attr_id = existing_attr['id']
                     terms_url = f"{url}/{attr_id}/terms"
-                    terms_response = requests.get(terms_url, headers=headers, timeout=600)  # 10 minutes
+                    terms_response = requests.get(terms_url, headers=headers, timeout=600)
                     
                     if terms_response.status_code == 200:
                         terms = terms_response.json()
                         existing_term = any(term.get('name', '').lower() == option_value.lower() for term in terms)
                         
                         if not existing_term:
-                            # Create the term
+
                             term_data = {'name': option_value}
-                            requests.post(terms_url, headers=headers, json=term_data, timeout=600)  # 10 minutes
+                            requests.post(terms_url, headers=headers, json=term_data, timeout=600)
                             _logger.info(f"Created WooCommerce attribute term: {option_value} for {attr_slug}")
                 else:
-                    # Create the attribute
+
                     attr_data = {
                         'name': attr_slug.replace('pa_', '').replace('-', ' ').title(),
                         'slug': attr_slug,
@@ -597,13 +597,13 @@ class ProductTemplate(models.Model):
                         'has_archives': False
                     }
                     
-                    create_response = requests.post(url, headers=headers, json=attr_data, timeout=600)  # 10 minutes
+                    create_response = requests.post(url, headers=headers, json=attr_data, timeout=600)
                     
                     if create_response.status_code == 201:
                         new_attr = create_response.json()
                         attr_id = new_attr['id']
                         
-                        # Create the term
+
                         terms_url = f"{url}/{attr_id}/terms"
                         term_data = {'name': option_value}
                         requests.post(terms_url, headers=headers, json=term_data, timeout=30)
@@ -658,7 +658,7 @@ class ProductTemplate(models.Model):
             wc_update_vals['last_sync'] = fields.Datetime.now()
             wc_update_vals['sync_status'] = 'pending'
             
-            # Pass the updated fields in context for partial sync
+
             updated_fields = list(wc_update_vals.keys())
             _logger.info(f"Product template updating WooCommerce product with fields: {updated_fields}")
             wc_product = wc_product.with_context(updated_fields=updated_fields)
@@ -706,7 +706,7 @@ class ProductTemplate(models.Model):
             import base64
             import io
             
-            # Try to import PIL
+
             try:
                 from PIL import Image
             except ImportError:
@@ -750,7 +750,7 @@ class ProductTemplate(models.Model):
             import base64
             import io
             
-            # Try to import PIL
+
             try:
                 from PIL import Image
             except ImportError:
@@ -788,7 +788,7 @@ class ProductTemplate(models.Model):
             return
         
         try:
-            # Find the WooCommerce product record
+
             wc_product = self.env['woocommerce.product'].search([
                 ('wc_product_id', '=', product.wc_product_id),
                 ('connection_id', '=', product.wc_connection_id.id)
@@ -798,11 +798,11 @@ class ProductTemplate(models.Model):
                 _logger.warning(f"WooCommerce product record not found for {product.name}")
                 return
             
-            # Check if main image already exists
+
             main_image = wc_product.product_image_ids.filtered(lambda img: img.is_main_image)
             
             if main_image:
-                # Update existing main image
+
                 main_image = main_image[0]
                 main_image.with_context(skip_wc_sync=True).write({
                     'image_1920': product.image_1920,
@@ -810,7 +810,7 @@ class ProductTemplate(models.Model):
                 })
                 _logger.info(f"Updated existing main image for product {product.name}")
             else:
-                # Create new main image
+
                 self.env['woocommerce.product.image'].with_context(skip_wc_sync=True).create({
                     'product_id': wc_product.id,
                     'image_1920': product.image_1920,

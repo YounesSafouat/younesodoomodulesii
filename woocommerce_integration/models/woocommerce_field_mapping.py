@@ -131,7 +131,7 @@ class WooCommerceFieldMapping(models.Model):
     def _onchange_wc_field_name(self):
         """Auto-fill WooCommerce field label when field is selected"""
         if self.wc_field_name:
-            # Find the label from the selection
+
             for field_code, field_label in self._get_wc_field_selection():
                 if field_code == self.wc_field_name:
                     self.wc_field_label = field_label
@@ -141,7 +141,7 @@ class WooCommerceFieldMapping(models.Model):
     def _onchange_odoo_field_name(self):
         """Auto-fill Odoo field label when field is selected"""
         if self.odoo_field_name:
-            # Find the label from the selection
+
             for field_code, field_label in self._get_odoo_field_selection():
                 if field_code == self.odoo_field_name:
                     self.odoo_field_label = field_label
@@ -151,14 +151,14 @@ class WooCommerceFieldMapping(models.Model):
     def _get_odoo_field_selection(self):
         """Dynamically get all product.template fields for selection"""
         try:
-            # Get the product.template model
+
             product_model = self.env['product.template']
             
-            # Get all fields from the model
+
             all_fields = []
             priority_fields = ['name', 'list_price', 'default_code', 'description', 'description_sale', 'active', 'sale_ok', 'categ_id']
             
-            # Exclude certain field types and system fields
+
             excluded_fields = {
                 'id', 'create_uid', 'write_uid', 'create_date', 'write_date',
                 'display_name', '__last_update', 'access_url', 'access_token',
@@ -170,49 +170,49 @@ class WooCommerceFieldMapping(models.Model):
                 'message_needaction_counter', 'message_partner_ids', 'website_message_ids'
             }
             
-            # Exclude field types that are not suitable for mapping
+
             excluded_field_types = {
                 'binary', 'image', 'html', 'reference', 'properties',
                 'one2many', 'many2many', 'many2one_reference'
             }
             
-            # Get all fields from the model
+
             for field_name, field_obj in product_model._fields.items():
-                # Skip excluded fields
+
                 if field_name in excluded_fields:
                     continue
                 
-                # Skip excluded field types
+
                 if field_obj.type in excluded_field_types:
                     continue
                 
-                # Skip computed fields that are not stored
+
                 if field_obj.compute and not field_obj.store:
                     continue
                 
-                # Skip related fields that might cause issues
+
                 if hasattr(field_obj, 'related') and field_obj.related:
                     continue
                 
-                # Create a user-friendly label
+
                 field_label = field_obj.string or field_name
                 if field_obj.type:
                     field_label += f" ({field_obj.type})"
                 
-                # Add field code for searchability
+
                 enhanced_label = f"{field_label} ({field_name})"
                 
                 all_fields.append((field_name, enhanced_label))
             
-            # Sort by priority (most commonly used fields first)
+
             sorted_fields = []
             
-            # Add priority fields first
+
             for field_name, field_label in all_fields:
                 if field_name in priority_fields:
                     sorted_fields.append((field_name, field_label))
             
-            # Add remaining fields
+
             for field_name, field_label in all_fields:
                 if field_name not in priority_fields:
                     sorted_fields.append((field_name, field_label))
@@ -220,7 +220,7 @@ class WooCommerceFieldMapping(models.Model):
             return sorted_fields
             
         except Exception as e:
-            # Fallback to basic fields if dynamic loading fails
+
             _logger.warning(f"Failed to dynamically load product.template fields: {e}")
             
             basic_fields = [
@@ -239,7 +239,7 @@ class WooCommerceFieldMapping(models.Model):
     @api.model
     def _get_wc_field_selection(self):
         """Get WooCommerce product fields for selection with search functionality"""
-        # Get connection context if available
+
         connection_id = self.env.context.get('default_connection_id')
         discovered_fields = []
         
@@ -251,7 +251,7 @@ class WooCommerceFieldMapping(models.Model):
                     try:
                         discovered_data = json.loads(connection.discovered_wc_fields)
                         discovered_fields = discovered_data.get('all_fields', [])
-                        # Ensure discovered_fields is a list of tuples
+
                         if not isinstance(discovered_fields, list):
                             discovered_fields = []
                     except (json.JSONDecodeError, KeyError, TypeError):
@@ -259,9 +259,9 @@ class WooCommerceFieldMapping(models.Model):
             except Exception:
                 discovered_fields = []
         
-        # Start with static fields (prioritized for common use)
+
         static_fields = [
-            # Basic Product Fields
+
             ('name', 'Product Name'),
             ('slug', 'Product Slug'),
             ('permalink', 'Product Permalink'),
@@ -329,7 +329,7 @@ class WooCommerceFieldMapping(models.Model):
             ('meta_data', 'Meta Data'),
             ('store', 'Store'),
             
-            # WooCommerce Attributes (from your store) - using slug format
+
             ('attributes.pa_choix-de-bois', 'Attribute: Choix de bois (pa_choix-de-bois)'),
             ('attributes.pa_classement-dusage', 'Attribute: Classement d\'usage (pa_classement-dusage)'),
             ('attributes.pa_coloris', 'Attribute: Coloris (pa_coloris)'),
@@ -345,7 +345,7 @@ class WooCommerceFieldMapping(models.Model):
             ('attributes.pa_packaging', 'Attribute: Packaging (pa_packaging)'),
             ('attributes.pa_marque', 'Attribute: Marque (pa_marque)'),
             
-            # Common Custom Fields (meta_data fields)
+
             ('meta_data._custom_field', 'Custom Field (Example)'),
             ('meta_data._product_custom_field', 'Product Custom Field'),
             ('meta_data._additional_info', 'Additional Information'),
@@ -423,22 +423,22 @@ class WooCommerceFieldMapping(models.Model):
             ('meta_data._refund_policy', 'Refund Policy'),
         ]
         
-        # Combine static fields with discovered fields
-        # Ensure all static fields are valid tuples
+
+
         all_fields = []
         for field_item in static_fields:
             if isinstance(field_item, (list, tuple)) and len(field_item) >= 2:
                 all_fields.append((field_item[0], field_item[1]))
         
-        # Add discovered fields that aren't already in static fields
+
         static_field_codes = [field[0] for field in static_fields]
         for field_item in discovered_fields:
-            # Ensure field_item is a tuple/list with at least 2 elements
+
             if isinstance(field_item, (list, tuple)) and len(field_item) >= 2:
                 try:
                     field_code, field_label = str(field_item[0]), str(field_item[1])
                     if field_code and field_label and field_code not in static_field_codes:
-                        # Enhance field label for better searchability
+
                         enhanced_label = f"{field_label} ({field_code})"
                         all_fields.append((field_code, enhanced_label))
                 except (IndexError, TypeError, AttributeError) as e:
@@ -448,32 +448,32 @@ class WooCommerceFieldMapping(models.Model):
                 _logger.warning(f"Invalid field item format in discovered fields: {field_item}")
                 continue
         
-        # Sort fields to prioritize commonly used ones
+
         priority_fields = ['name', 'price', 'regular_price', 'sale_price', 'sku', 'status', 'description', 'short_description']
         sorted_fields = []
         priority_sorted = []
         
-        # Add priority fields first
+
         for field_item in all_fields:
-            # Ensure field_item is a valid tuple with 2 elements
+
             if isinstance(field_item, (list, tuple)) and len(field_item) >= 2:
                 field_code, field_label = field_item[0], field_item[1]
                 if field_code in priority_fields:
                     priority_sorted.append((field_code, field_label))
         
-        # Add remaining fields
+
         for field_item in all_fields:
-            # Ensure field_item is a valid tuple with 2 elements
+
             if isinstance(field_item, (list, tuple)) and len(field_item) >= 2:
                 field_code, field_label = field_item[0], field_item[1]
                 if field_code not in priority_fields:
                     priority_sorted.append((field_code, field_label))
         
-        # Ensure we return at least the static fields if something went wrong
+
         if not priority_sorted:
             return static_fields
         
-        # Final validation: ensure all returned items are valid tuples
+
         validated_fields = []
         for field_item in priority_sorted:
             if isinstance(field_item, (list, tuple)) and len(field_item) >= 2:
@@ -481,7 +481,7 @@ class WooCommerceFieldMapping(models.Model):
             else:
                 _logger.warning(f"Invalid field item in final result: {field_item}")
         
-        # If validation removed items, fall back to static fields
+
         if not validated_fields:
             _logger.error("All field items were invalid, falling back to static fields")
             return static_fields
@@ -607,9 +607,9 @@ class WooCommerceFieldMapping(models.Model):
                 return str(value).strip()
             
             elif self.transform_function == 'normalize_choice':
-                # Special transformation for choice fields with accents
+
                 value_str = str(value).lower()
-                # Remove accents and normalize
+
                 import unicodedata
                 normalized = unicodedata.normalize('NFD', value_str)
                 normalized = ''.join(c for c in normalized if unicodedata.category(c) != 'Mn')
@@ -629,7 +629,7 @@ class WooCommerceFieldMapping(models.Model):
             
             elif self.transform_function == 'custom':
                 if self.custom_function:
-                    # Create a safe execution environment
+
                     safe_globals = {
                         '__builtins__': {},
                         'value': value,
@@ -654,11 +654,11 @@ class WooCommerceFieldMapping(models.Model):
         if direction not in ['wc_to_odoo', 'odoo_to_wc']:
             raise ValidationError(_('Invalid mapping direction'))
         
-        # Check if mapping applies to this direction
+
         if self.mapping_direction not in [direction, 'bidirectional']:
             return {}
         
-        # Get source and target field names
+
         if direction == 'wc_to_odoo':
             source_field = self.wc_field_name
             target_field = self.odoo_field_name
@@ -666,13 +666,13 @@ class WooCommerceFieldMapping(models.Model):
             source_field = self.odoo_field_name
             target_field = self.wc_field_name
         
-        # Get source value
+
         source_value = source_data.get(source_field)
         
-        # Transform value
+
         transformed_value = self.apply_transform(source_value, direction)
         
-        # Check if field exists in target model
+
         if hasattr(target_model, '_fields') and target_field not in target_model._fields:
             _logger.warning(f"Field {target_field} does not exist in target model")
             return {}
@@ -721,7 +721,7 @@ class WooCommerceFieldMapping(models.Model):
         """Test the field mapping with sample data"""
         self.ensure_one()
         
-        # Sample test data
+
         test_data_wc = {
             'name': 'Test Product',
             'regular_price': '29.99',

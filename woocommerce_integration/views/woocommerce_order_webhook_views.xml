@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Webhook Tree View -->
+
     <record id="woocommerce_order_webhook_tree_view" model="ir.ui.view">
         <field name="name">woocommerce.order.webhook.tree</field>
         <field name="model">woocommerce.order.webhook</field>
@@ -17,7 +17,6 @@
         </field>
     </record>
 
-    <!-- Webhook Form View -->
     <record id="woocommerce_order_webhook_form_view" model="ir.ui.view">
         <field name="name">woocommerce.order.webhook.form</field>
         <field name="model">woocommerce.order.webhook</field>
@@ -33,7 +32,7 @@
                             <field name="name" placeholder="Webhook Name"/>
                         </h1>
                     </div>
-                    
+
                     <group>
                         <group>
                             <field name="connection_id" options="{'no_create': True}"/>
@@ -46,11 +45,11 @@
                             <field name="webhook_url" readonly="1"/>
                         </group>
                     </group>
-                    
+
                     <group string="Security">
                         <field name="webhook_secret" password="True"/>
                     </group>
-                    
+
                     <notebook>
                         <page string="Webhook Logs" name="logs">
                             <field name="webhook_log_ids" readonly="1">
@@ -71,7 +70,6 @@
         </field>
     </record>
 
-    <!-- Webhook Search View -->
     <record id="woocommerce_order_webhook_search_view" model="ir.ui.view">
         <field name="name">woocommerce.order.webhook.search</field>
         <field name="model">woocommerce.order.webhook</field>
@@ -91,7 +89,6 @@
         </field>
     </record>
 
-    <!-- Webhook Action -->
     <record id="woocommerce_order_webhook_action" model="ir.actions.act_window">
         <field name="name">WooCommerce Order Webhooks</field>
         <field name="res_model">woocommerce.order.webhook</field>
@@ -108,14 +105,12 @@
         </field>
     </record>
 
-    <!-- Webhook Menu -->
     <menuitem id="menu_woocommerce_order_webhooks"
               name="Order Webhooks"
               parent="menu_woocommerce_main"
               action="woocommerce_order_webhook_action"
               sequence="40"/>
 
-    <!-- Webhook Log Tree View -->
     <record id="woocommerce_order_webhook_log_tree_view" model="ir.ui.view">
         <field name="name">woocommerce.order.webhook.log.tree</field>
         <field name="model">woocommerce.order.webhook.log</field>
@@ -133,7 +128,6 @@
         </field>
     </record>
 
-    <!-- Webhook Log Form View -->
     <record id="woocommerce_order_webhook_log_form_view" model="ir.ui.view">
         <field name="name">woocommerce.order.webhook.log.form</field>
         <field name="model">woocommerce.order.webhook.log</field>
@@ -159,7 +153,6 @@
         </field>
     </record>
 
-    <!-- Webhook Log Action -->
     <record id="woocommerce_order_webhook_log_action" model="ir.actions.act_window">
         <field name="name">Webhook Logs</field>
         <field name="res_model">woocommerce.order.webhook.log</field>
@@ -174,7 +167,6 @@
         </field>
     </record>
 
-    <!-- Webhook Log Menu -->
     <menuitem id="menu_woocommerce_webhook_logs"
               name="Webhook Logs"
               parent="menu_woocommerce_main"

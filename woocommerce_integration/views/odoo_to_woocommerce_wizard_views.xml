@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- Odoo to WooCommerce Import Wizard Form View -->
+
         <record id="view_odoo_to_woocommerce_wizard_form" model="ir.ui.view">
             <field name="name">odoo.to.woocommerce.wizard.form</field>
             <field name="model">odoo.to.woocommerce.wizard</field>
@@ -11,12 +10,12 @@
                     <header>
                         <field name="import_status" widget="statusbar" statusbar_visible="draft,running,completed"/>
                     </header>
-                    
+
                     <sheet>
                         <div class="oe_title">
                             <h1>Import Odoo Products to WooCommerce</h1>
                         </div>
-                        
+
                         <group string="Connection Settings">
                             <group>
                                 <field name="connection_id" required="1"/>
@@ -25,7 +24,7 @@
                                         invisible="import_status != 'draft'"/>
                             </group>
                         </group>
-                        
+
                         <group string="Import Settings">
                             <group>
                                 <field name="import_limit" help="Set to 0 for no limit"/>
@@ -36,22 +35,22 @@
                                 <field name="overwrite_existing"/>
                             </group>
                         </group>
-                        
+
                         <separator string="Product Selection"/>
-                        
+
                         <group>
                             <field name="product_domain" 
                                    invisible="selected_product_ids"
                                    help="Domain to filter products (e.g., [('sale_ok', '=', True), ('list_price', '>', 0)])"/>
                         </group>
-                        
+
                         <group string="OR Select Specific Products">
                             <field name="selected_product_ids" 
                                    widget="many2many_tags"
                                    options="{'no_create': True}"
                                    help="Leave empty to import based on filter above"/>
                         </group>
-                        
+
                         <group string="Import Progress" invisible="import_status == 'draft'">
                             <group>
                                 <label for="progress_percentage" string="Progress"/>
@@ -67,7 +66,7 @@
                                 <field name="error_count" readonly="1"/>
                             </group>
                         </group>
-                        
+
                         <notebook invisible="import_status == 'draft'">
                             <page string="Import Log">
                                 <field name="import_log" readonly="1" widget="text" nolabel="1"
@@ -75,7 +74,7 @@
                             </page>
                         </notebook>
                     </sheet>
-                    
+
                     <footer>
                         <button name="action_import_products" type="object" 
                                 string="Start Export to WooCommerce" 
@@ -97,7 +96,6 @@
             </field>
         </record>
 
-        <!-- Odoo to WooCommerce Import Wizard Action -->
         <record id="action_odoo_to_woocommerce_wizard" model="ir.actions.act_window">
             <field name="name">Import Odoo Products to WooCommerce</field>
             <field name="res_model">odoo.to.woocommerce.wizard</field>

@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        
-        <!-- WooCommerce Product Image Tree View -->
+
         <record id="view_woocommerce_product_image_tree" model="ir.ui.view">
             <field name="name">woocommerce.product.image.tree</field>
             <field name="model">woocommerce.product.image</field>
@@ -18,7 +17,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Product Image Form View -->
         <record id="view_woocommerce_product_image_form" model="ir.ui.view">
             <field name="name">woocommerce.product.image.form</field>
             <field name="model">woocommerce.product.image</field>
@@ -51,12 +49,11 @@
                                 </div>
                             </button>
                         </div>
-                        
-                        <!-- Main Image Indicator -->
+
                         <div class="alert alert-success" role="alert" invisible="not is_main_image">
                             <strong>This is the MAIN IMAGE</strong> - It will appear first in WooCommerce
                         </div>
-                        
+
                         <group>
                             <group>
                                 <field name="name" string="Image Name"/>
@@ -75,11 +72,11 @@
                                        invisible="not sync_error" widget="text"/>
                             </group>
                         </group>
-                        
+
                         <group>
                             <field name="image_1920" widget="image" class="oe_avatar"/>
                         </group>
-                        
+
                         <group string="Image URLs" invisible="not wc_image_url">
                             <field name="wc_image_url" readonly="1" widget="url"/>
                         </group>
@@ -88,7 +85,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Product Image Search View -->
         <record id="view_woocommerce_product_image_search" model="ir.ui.view">
             <field name="name">woocommerce.product.image.search</field>
             <field name="model">woocommerce.product.image</field>
@@ -115,7 +111,6 @@
             </field>
         </record>
 
-        <!-- WooCommerce Product Image Action -->
         <record id="action_woocommerce_product_image" model="ir.actions.act_window">
             <field name="name">Product Images</field>
             <field name="res_model">woocommerce.product.image</field>
@@ -132,7 +127,6 @@
             </field>
         </record>
 
-        <!-- Bulk Sync Server Action -->
         <record id="action_bulk_sync_images" model="ir.actions.server">
             <field name="name">Bulk Sync Selected Images</field>
             <field name="model_id" ref="model_woocommerce_product_image"/>
@@ -149,5 +143,3 @@ else:
 
     </data>
 </odoo>
-
-
