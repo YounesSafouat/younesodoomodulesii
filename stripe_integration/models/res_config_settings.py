@@ -24,7 +24,6 @@ class ResConfigSettings(models.TransientModel):
         """Helper method to get webhook URL"""
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url', '')
         if not base_url:
-            # Fallback: try to get from request if available
             try:
                 from odoo.http import request
                 if hasattr(request, 'httprequest') and request.httprequest:

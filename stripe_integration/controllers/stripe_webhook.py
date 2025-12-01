@@ -92,21 +92,17 @@ class StripeWebhookController(http.Controller):
             postal_code = address.get('postal_code')
             country = address.get('country')
             
-            # Handle invoice - it can be an object (if expanded) or a string ID
             invoice_id = None
             hosted_invoice_url = None
             
             invoice_data_raw = session_data.get('invoice')
             if invoice_data_raw:
-                # If invoice is an object (expanded), get the ID from it
                 if isinstance(invoice_data_raw, dict):
                     invoice_id = invoice_data_raw.get('id')
                     hosted_invoice_url = invoice_data_raw.get('hosted_invoice_url')
-                # If invoice is a string (ID), use it directly
                 elif isinstance(invoice_data_raw, str):
                     invoice_id = invoice_data_raw
             
-            # Always fetch invoice details if we have an invoice ID but no hosted URL
             if invoice_id and not hosted_invoice_url:
                 try:
                     stripe_api_key = request.env['ir.config_parameter'].sudo().get_param('stripe_integration.api_key')
@@ -127,7 +123,6 @@ class StripeWebhookController(http.Controller):
                 except Exception as e:
                     _logger.error(f"❌ Error fetching invoice URL: {str(e)}")
             
-            # Log invoice information for debugging
             if invoice_id:
                 _logger.info(f"📄 Invoice ID: {invoice_id}, Hosted URL: {hosted_invoice_url}")
             else:

@@ -135,7 +135,6 @@ class SaleOrder(models.Model):
         if not stripe_api_key:
             raise UserError(_('Stripe API key is not configured. Please configure it in Settings > Stripe Integration.'))
         
-        # Validate API key format - must be a secret key (sk_*) not a publishable key (pk_*)
         stripe_api_key = stripe_api_key.strip()
         if stripe_api_key.startswith('pk_'):
             raise UserError(_(
@@ -186,7 +185,6 @@ class SaleOrder(models.Model):
             
             data[f'{prefix}[quantity]'] = item.get('quantity', 1)
         
-        # Enable invoice creation for this payment link
         data['invoice_creation[enabled]'] = 'true'
         
         try:
@@ -199,7 +197,6 @@ class SaleOrder(models.Model):
                 timeout=30
             )
             
-            # Handle 403 Forbidden errors with more helpful messages
             if response.status_code == 403:
                 try:
                     error_data = response.json()
