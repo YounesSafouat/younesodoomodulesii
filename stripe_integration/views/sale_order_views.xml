@@ -13,12 +13,11 @@
                             class="btn-primary" 
                             invisible="stripe_payment_link_id"
                             confirm="Generate a Stripe payment link for this quotation?"/>
-                    <button name="%(action_open_url)d" 
-                            type="action" 
+                    <button name="action_open_stripe_payment_link" 
+                            type="object" 
                             string="Open Payment Link" 
                             class="btn-secondary" 
-                            invisible="not stripe_payment_link_url"
-                            context="{'url': stripe_payment_link_url}"/>
+                            invisible="not stripe_payment_link_url"/>
                 </xpath>
                 
                 <xpath expr="//field[@name='partner_id']" position="after">

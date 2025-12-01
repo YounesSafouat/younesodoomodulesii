@@ -200,4 +200,17 @@ class SaleOrder(models.Model):
             raise UserError(_('Error creating Stripe payment link: %s') % str(e))
         except Exception as e:
             _logger.error(f'Unexpected error creating Stripe payment link: {str(e)}')
-            raise UserError(_('Unexpected error: %s') % str(e))    
+            raise UserError(_('Unexpected error: %s') % str(e))
+    
+    def action_open_stripe_payment_link(self):
+        """Open the Stripe payment link in a new window"""
+        self.ensure_one()
+        
+        if not self.stripe_payment_link_url:
+            raise UserError(_('No payment link available for this quotation.'))
+        
+        return {
+            'type': 'ir.actions.act_url',
+            'url': self.stripe_payment_link_url,
+            'target': 'new',
+        }    
