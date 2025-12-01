@@ -16,6 +16,20 @@
                             <h1>Import Odoo Products to WooCommerce</h1>
                         </div>
 
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-upload"/> Export Products to WooCommerce</h4>
+                            <p>This wizard exports your Odoo products to your WooCommerce store. Products will be created or updated in WooCommerce based on your settings.</p>
+                            <p><strong>How to use:</strong></p>
+                            <ol>
+                                <li>Select the WooCommerce connection</li>
+                                <li>Choose which products to export (use filter or select specific products)</li>
+                                <li>Set import limits and batch size (recommended: 10-50 products per batch)</li>
+                                <li>Enable "Include Images" to sync product images</li>
+                                <li>Click "Start Export to WooCommerce"</li>
+                            </ol>
+                            <p><strong>Note:</strong> Products must have a price and be marked as "Can be Sold" to be exported.</p>
+                        </div>
+
                         <group string="Connection Settings">
                             <group>
                                 <field name="connection_id" required="1"/>

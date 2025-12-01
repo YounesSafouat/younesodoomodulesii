@@ -11,13 +11,13 @@
                 <xpath expr="//group[@name='group_general']" position="after">
                     <group string="WooCommerce Settings" name="woocommerce_quick_settings">
                         <group>
-                            <field name="wc_sync_enabled" string="🔄 Sync with WooCommerce"/>
                             <field name="wc_connection_id" 
                                    string="WooCommerce Store" 
-                                   invisible="not wc_sync_enabled"
-                                   required="wc_sync_enabled"
+                                   domain="[('active', '=', True)]"
                                    placeholder="Select a WooCommerce connection..."
-                                   help="Auto-create this product in WooCommerce when saved"/>
+                                   help="Select a WooCommerce connection to link this product to your store. You can enable sync after selecting a connection."/>
+                            <field name="wc_sync_enabled" string="🔄 Sync with WooCommerce"
+                                   invisible="not wc_connection_id"/>
                         </group>
                         <group>
                             <field name="wc_sync_status" 
@@ -35,26 +35,77 @@
                 <xpath expr="//notebook" position="inside">
                     <page string="WooCommerce" name="woocommerce">
 
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-sync"/> WooCommerce Synchronization</h4>
+                            <p><strong>How it works:</strong></p>
+                            <ol>
+                                <li>Select a <strong>WooCommerce Connection</strong> to link this product to your store</li>
+                                <li>Enable <strong>"Sync with WooCommerce"</strong> to activate synchronization</li>
+                                <li>When enabled, the product will automatically sync based on your <strong>Sync Direction</strong> setting</li>
+                                <li>Changes to price, name, description, and images will sync automatically if <strong>"Auto Sync on Changes"</strong> is enabled</li>
+                            </ol>
+                            <p><strong>Sync Directions:</strong></p>
+                            <ul>
+                                <li><strong>Bidirectional:</strong> Changes sync both ways (Odoo ↔ WooCommerce)</li>
+                                <li><strong>Odoo → WooCommerce:</strong> Only Odoo changes sync to WooCommerce</li>
+                                <li><strong>WooCommerce → Odoo:</strong> Only WooCommerce changes sync to Odoo</li>
+                            </ul>
+                            <p><strong>Note:</strong> When you set a connection, sync is automatically enabled and the sync direction is set from the connection's default settings.</p>
+                        </div>
+
                         <group>
                             <group>
-                                <field name="wc_sync_enabled" string="Enable WooCommerce Sync"/>
-                                <field name="wc_sync_status" widget="badge" readonly="1" string="Sync Status"/>
+                                <field name="wc_sync_enabled" string="Enable WooCommerce Sync"
+                                       help="Enable synchronization between this Odoo product and WooCommerce. When enabled, changes will sync based on the sync direction."/>
+                                <field name="wc_sync_status" widget="badge" readonly="1" string="Sync Status"
+                                       help="Current synchronization status. Green = synced, Yellow = pending, Red = error"/>
                             </group>
+                            <div class="alert alert-warning" role="alert" invisible="not wc_sync_enabled">
+                                <h4><i class="fa fa-lock"/> Sensitive Information</h4>
+                                <p>The <strong>WooCommerce Product ID</strong> and <strong>Connection</strong> are sensitive fields that link this product to your WooCommerce store. Changing these could break the synchronization.</p>
+                            </div>
+
                             <group>
-                                <field name="wc_connection_id" string="WooCommerce Connection"/>
-                                <field name="wc_product_id" readonly="1" string="WooCommerce Product ID"/>
-                                <field name="wc_product_url" widget="url" readonly="1" string="WooCommerce URL" invisible="not wc_product_url"/>
+                                <field name="wc_connection_id" string="WooCommerce Connection"
+                                       domain="[('active', '=', True)]"
+                                       help="WooCommerce connection. Once set and products are synced, changing this could break synchronization."/>
+                                <field name="wc_product_id" readonly="1" string="WooCommerce Product ID"
+                                       help="WooCommerce Product ID - This is set automatically when the product is created in WooCommerce. Do not change this."/>
+                                <field name="wc_product_url" widget="url" readonly="1" string="WooCommerce URL" invisible="not wc_product_url"
+                                       help="Direct link to view this product in your WooCommerce store"/>
+                            </group>
+                        </group>
+
+                        <div class="alert alert-info" role="alert" invisible="not wc_sync_enabled">
+                            <h4><i class="fa fa-dollar-sign"/> Pricing</h4>
+                            <p><strong>Price:</strong> This is the regular/base price. It syncs bidirectionally with WooCommerce's regular price.</p>
+                            <p><strong>Manual Sale Price:</strong> Set a manual sale price to override promotions. When set, any active promotions for this product will be automatically disabled.</p>
+                            <p><strong>WooCommerce Sale Price:</strong> This shows the current sale price in WooCommerce (from promotions or manual override).</p>
+                        </div>
+
+                        <group string="Pricing" invisible="not wc_sync_enabled">
+                            <group>
+                                <field name="list_price" string="Price" 
+                                       help="Product price. This syncs with WooCommerce regular price."/>
+                                <field name="wc_manual_sale_price" string="Manual Sale Price"
+                                       help="Manually set sale price for WooCommerce. When set, this will override any active promotions and disable them for this product. Leave empty to use automatic promotion pricing."/>
+                                <field name="wc_sale_price" string="WooCommerce Sale Price" readonly="1"
+                                       help="Current sale price in WooCommerce (from promotions or manual override)."/>
                             </group>
                         </group>
 
                         <group string="Advanced Settings" invisible="not wc_sync_enabled">
                             <group>
-                                <field name="wc_auto_sync" string="Auto Sync on Changes"/>
-                                <field name="wc_sync_direction" string="Sync Direction" readonly="1"/>
+                                <field name="wc_auto_sync" string="Auto Sync on Changes"
+                                       help="Automatically sync changes to WooCommerce when you save this product. If disabled, you'll need to manually click 'Sync to WooCommerce'."/>
+                                <field name="wc_sync_direction" string="Sync Direction" readonly="1"
+                                       help="How changes sync between Odoo and WooCommerce. This is set from your connection's default settings but can be overridden per product."/>
                             </group>
                             <group>
-                                <field name="wc_image_sync_enabled" string="Include Images"/>
-                                <field name="wc_last_sync" readonly="1" string="Last Sync"/>
+                                <field name="wc_image_sync_enabled" string="Include Images"
+                                       help="Include product images when syncing to WooCommerce. The main inventory image will always be the main image in WooCommerce."/>
+                                <field name="wc_last_sync" readonly="1" string="Last Sync"
+                                       help="Last time this product was synchronized with WooCommerce"/>
                             </group>
                         </group>
 
@@ -73,15 +124,29 @@
                             </button>
                         </div>
 
+                        <div class="alert alert-info" role="alert" invisible="not wc_sync_enabled">
+                            <h4><i class="fa fa-images"/> Image Management</h4>
+                            <p><strong>Important:</strong> The main product image in Inventory (the one you see in the product form) will always be the main image in WooCommerce.</p>
+                            <p>Click <strong>"Manage WooCommerce Images"</strong> to:</p>
+                            <ul>
+                                <li>View all images associated with this product in WooCommerce</li>
+                                <li>Upload additional images</li>
+                                <li>Set image order and alt text</li>
+                                <li>Sync images to your WooCommerce store</li>
+                            </ul>
+                        </div>
+
                         <group string="Image Management" invisible="not wc_sync_enabled">
                             <group>
-                                <field name="wc_image_sync_enabled" string="Include Images in Sync"/>
+                                <field name="wc_image_sync_enabled" string="Include Images in Sync"
+                                       help="Enable to include product images when syncing to WooCommerce"/>
                             </group>
                             <group>
                                 <button name="action_view_woocommerce_images" type="object" 
                                         class="btn btn-primary" 
                                         string="Manage WooCommerce Images"
-                                        invisible="not wc_product_id">
+                                        invisible="not wc_product_id"
+                                        help="Open the WooCommerce product page to manage images">
                                     <i class="fa fa-images"></i> Go to Image Manager
                                 </button>
                             </group>
@@ -100,6 +165,7 @@
             <field name="arch" type="xml">
 
                 <xpath expr="//field[@name='list_price']" position="after">
+                    <field name="wc_sale_price" optional="hide" string="WC Sale Price" readonly="1" invisible="not wc_sync_enabled"/>
                     <field name="wc_sync_enabled" widget="boolean_toggle" optional="hide" string="WC Sync"/>
                     <field name="wc_sync_status" widget="badge" optional="hide" string="Status"
                            decoration-success="wc_sync_status == 'synced'"

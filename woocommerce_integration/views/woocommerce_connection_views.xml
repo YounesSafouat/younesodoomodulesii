@@ -39,6 +39,11 @@
                                 class="btn-danger" 
                                 invisible="not import_in_progress"
                                 confirm="Do you want to stop the running import? This will cancel the current import process."/>
+                        <button name="action_resume_import" type="object" 
+                                string="Resume Import" 
+                                class="btn-warning" 
+                                invisible="not import_in_progress"
+                                help="Manually trigger the next batch if the import appears stuck"/>
                         <button name="action_import_odoo_products" type="object" 
                                 string="Export to WooCommerce" 
                                 class="btn-warning" 
@@ -82,44 +87,90 @@
                             </h4>
                             <p><field name="import_status"/></p>
                             <p><strong>Progress:</strong> <field name="import_progress" widget="progressbar"/></p>
+                            <p><strong>Cron Job Status:</strong> <field name="import_cron_status" readonly="1"/></p>
+                        </div>
+
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-info-circle"/> Getting Started</h4>
+                            <p><strong>Step 1:</strong> Enter your WooCommerce store URL (e.g., https://yourstore.com)</p>
+                            <p><strong>Step 2:</strong> Create API credentials in WooCommerce: <strong>WooCommerce → Settings → Advanced → REST API → Add Key</strong></p>
+                            <p><strong>Step 3:</strong> Copy the Consumer Key and Consumer Secret and paste them below</p>
+                            <p><strong>Step 4:</strong> Click "Test Connection" to verify your settings</p>
+                            <p><strong>Step 5:</strong> Once connected, you can import products or export Odoo products to WooCommerce</p>
                         </div>
 
                         <group>
                             <group>
-                                <field name="store_url" placeholder="https://yourstore.com"/>
-                                <field name="api_version"/>
-                                <field name="active"/>
+                                <field name="store_url" placeholder="https://yourstore.com"
+                                       help="Enter your WooCommerce store URL. Make sure it includes https:// and does not end with a slash."/>
+                                <field name="api_version" 
+                                       help="WooCommerce REST API version. Default is v3. Only change if your store uses a different version."/>
+                                <field name="active" 
+                                       help="Uncheck to temporarily disable this connection without deleting it."/>
                             </group>
                             <group>
-                                <field name="consumer_key" password="True"/>
-                                <field name="consumer_secret" password="True"/>
-                                <field name="last_sync" readonly="1"/>
+                                <field name="consumer_key" password="True"
+                                       help="Consumer Key from WooCommerce REST API. Found in: WooCommerce → Settings → Advanced → REST API"/>
+                                <field name="consumer_secret" password="True"
+                                       help="Consumer Secret from WooCommerce REST API. Keep this secure and never share it."/>
+                                <field name="last_sync" readonly="1"
+                                       help="Last time this connection was successfully tested or used."/>
                             </group>
                         </group>
+
+                        <div class="alert alert-warning" role="alert">
+                            <h4><i class="fa fa-image"/> WordPress Authentication (Optional)</h4>
+                            <p>This is only needed if you want to upload product images directly to WordPress Media Library.</p>
+                            <p><strong>How to create an Application Password:</strong></p>
+                            <ol>
+                                <li>Go to your WordPress admin: <strong>Users → Profile</strong></li>
+                                <li>Scroll down to <strong>"Application Passwords"</strong> section</li>
+                                <li>Enter a name (e.g., "Odoo Integration") and click <strong>"Add New Application Password"</strong></li>
+                                <li>Copy the generated password (format: xxxx xxxx xxxx xxxx xxxx xxxx)</li>
+                                <li>Paste it in the field below along with your WordPress username</li>
+                            </ol>
+                            <p><strong>Note:</strong> If you don't set this up, images will be uploaded using Base64 encoding instead.</p>
+                        </div>
 
                         <group string="WordPress Authentication (for Media Upload)">
                             <group>
-                                <field name="wp_username" placeholder="admin"/>
-                                <field name="wp_application_password" password="True" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"/>
+                                <field name="wp_username" placeholder="admin"
+                                       help="Your WordPress admin username"/>
+                                <field name="wp_application_password" password="True" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
+                                       help="Application Password from WordPress (Users → Profile → Application Passwords). Format: xxxx xxxx xxxx xxxx xxxx xxxx"/>
                             </group>
                         </group>
 
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-cog"/> Default Settings</h4>
+                            <p>These settings will be applied to all products linked to this connection. You can override them for individual products.</p>
+                        </div>
+
                         <group string="Default Settings">
                             <group>
-                                <field name="default_sync_direction"/>
-                                <field name="image_upload_method"/>
+                                <field name="default_sync_direction"
+                                       help="Default sync direction for products linked to this connection. Bidirectional means changes sync both ways. You can change this per product in the Inventory module."/>
+                                <field name="image_upload_method"
+                                       help="How to upload product images: WordPress Media Library (requires WordPress authentication above) or Base64 encoding."/>
                             </group>
                         </group>
 
                         <notebook>
                             <page string="Connection Status" name="status">
+                                <div class="alert alert-info" role="alert">
+                                    <h4><i class="fa fa-info-circle"/> Import Log</h4>
+                                    <p>This log shows the progress of product imports. The log updates automatically during import operations.</p>
+                                    <p><strong>Tip:</strong> Refresh the page to see the latest log entries if they don't appear automatically.</p>
+                                </div>
                                 <group>
                                     <field name="connection_error" readonly="1" 
                                            invisible="not connection_error"/>
                                     <field name="import_log" readonly="1" 
                                            widget="text" 
-                                           placeholder="Import logs will appear here..."
-                                           invisible="not import_log"/>
+                                           placeholder="Import logs will appear here... The log updates automatically during import operations."
+                                           options="{'resizable': True}"
+                                           nolabel="1"
+                                           style="min-height: 300px; font-family: monospace; font-size: 12px;"/>
                                 </group>
                             </page>
 
@@ -140,10 +191,17 @@
                             </page>
 
                             <page string="Field Mappings" name="field_mappings">
-                                <div class="row mt16 mb16">
-                                    <div class="col-12">
-                                        <p class="text-muted">Configure how fields are mapped between WooCommerce and Odoo products.</p>
-                                    </div>
+                                <div class="alert alert-info" role="alert">
+                                    <h4><i class="fa fa-exchange"/> Field Mappings</h4>
+                                    <p><strong>What are Field Mappings?</strong></p>
+                                    <p>Field mappings allow you to synchronize custom fields between WooCommerce and Odoo. For example, you can map a WooCommerce custom field to an Odoo product attribute.</p>
+                                    <p><strong>How to use:</strong></p>
+                                    <ol>
+                                        <li>Click <strong>"Discover Fields"</strong> to automatically find all available fields in your WooCommerce store</li>
+                                        <li>Click <strong>"Create Default Mappings"</strong> to set up standard field mappings (name, price, description, etc.)</li>
+                                        <li>Click <strong>"Manage Field Mappings"</strong> to create custom mappings or edit existing ones</li>
+                                    </ol>
+                                    <p><strong>Note:</strong> Default mappings (name, price, SKU, etc.) are handled automatically. You only need custom mappings for additional fields.</p>
                                 </div>
                                 <div class="row mb16">
                                     <div class="col-12">

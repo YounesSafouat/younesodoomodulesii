@@ -7,6 +7,17 @@
             <field name="model">woocommerce.category.mapping.wizard</field>
             <field name="arch" type="xml">
                 <form string="Map WooCommerce Category">
+                    <div class="alert alert-info" role="alert">
+                        <h4><i class="fa fa-tags"/> Category Mapping</h4>
+                        <p>When importing products from WooCommerce, you need to map WooCommerce categories to Odoo product categories.</p>
+                        <p><strong>Options:</strong></p>
+                        <ul>
+                            <li><strong>Map to Existing Category:</strong> Link this WooCommerce category to an existing Odoo category</li>
+                            <li><strong>Create New Category:</strong> Automatically create a new Odoo category with the same name</li>
+                        </ul>
+                        <p><strong>Why is this needed?</strong> WooCommerce and Odoo use different category systems. Mapping ensures products are organized correctly in both systems.</p>
+                    </div>
+
                     <div class="oe_title">
                         <h1>Map WooCommerce Category</h1>
                     </div>

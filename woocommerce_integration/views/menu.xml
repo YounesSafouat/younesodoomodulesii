@@ -50,6 +50,38 @@
         />
 
         <menuitem 
+            id="menu_woocommerce_coupons" 
+            name="Coupons" 
+            parent="menu_woocommerce_main" 
+            action="action_woocommerce_coupon" 
+            sequence="40"
+        />
+
+        <menuitem 
+            id="menu_woocommerce_promotions" 
+            name="Promotions" 
+            parent="menu_woocommerce_main" 
+            action="action_woocommerce_promotion" 
+            sequence="41"
+        />
+
+        <menuitem 
+            id="menu_woocommerce_order_webhooks" 
+            name="Order Webhooks" 
+            parent="menu_woocommerce_main" 
+            action="woocommerce_order_webhook_action" 
+            sequence="42"
+        />
+
+        <menuitem 
+            id="menu_woocommerce_webhook_logs" 
+            name="Webhook Logs" 
+            parent="menu_woocommerce_main" 
+            action="woocommerce_order_webhook_log_action" 
+            sequence="43"
+        />
+
+        <menuitem 
             id="menu_woocommerce_config" 
             name="Configuration" 
             parent="menu_woocommerce_main" 

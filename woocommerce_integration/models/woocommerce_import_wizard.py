@@ -87,6 +87,18 @@ class WooCommerceImportWizard(models.TransientModel):
         help='Import product categories'
     )
     
+    auto_import_categories = fields.Boolean(
+        string='Auto-Import All Categories',
+        default=True,
+        help='Automatically import all WooCommerce categories when importing products. This ensures all product categories are available in Odoo.'
+    )
+    
+    auto_import_coupons = fields.Boolean(
+        string='Auto-Import All Coupons',
+        default=True,
+        help='Automatically import all WooCommerce coupons when importing products. This helps track which products have associated coupons.'
+    )
+    
     import_images = fields.Boolean(
         string='Import Images',
         default=True,
@@ -177,74 +189,141 @@ class WooCommerceImportWizard(models.TransientModel):
         
         return defaults
 
-    def _append_to_connection_log(self, message):
-        """Append a message to the connection's import log (keeps last 5000 chars)
+    def _update_connection_progress(self, imported_count, total_count=None):
+        """Update connection progress count - more reliable version
         
-        Uses a separate transaction to avoid aborting the main import transaction
-        if there's a concurrency error. This ensures product imports continue
-        even if log updates fail.
+        This method updates the connection's progress count after each successful import.
+        Non-blocking - will silently fail if database connections are exhausted.
         """
         if not self.connection_id:
             return
         
-
-
+        progress_cr = None
         try:
-
-            new_cr = self.env.registry.cursor()
+            # Try to get a cursor, but don't wait if connections are exhausted
             try:
-
-                new_env = self.env(cr=new_cr)
-                connection = new_env['woocommerce.connection'].browse(self.connection_id.id)
+                progress_cr = self.env.registry.cursor()
+            except Exception as cursor_error:
+                # If we can't get a cursor (e.g., connection pool exhausted), just skip progress update
+                _logger.debug(f"Could not get cursor for progress update (non-critical): {cursor_error}")
+                return
+            
+            try:
+                progress_env = self.env(cr=progress_cr)
+                connection = progress_env['woocommerce.connection'].browse(self.connection_id.id)
                 
                 if not connection.exists():
-                    new_cr.close()
                     return
                 
-
+                # Try to lock with NOWAIT to avoid hanging
                 try:
-                    new_cr.execute(
+                    progress_cr.execute(
                         "SELECT id FROM woocommerce_connection WHERE id = %s FOR UPDATE NOWAIT",
                         (self.connection_id.id,)
                     )
                 except Exception as lock_error:
-
-
-                    new_cr.close()
-                    _logger.debug(f"Could not lock connection for log update, skipping: {lock_error}")
+                    # Lock failed, skip this progress update
+                    _logger.debug(f"Could not lock connection for progress update (non-critical): {lock_error}")
                     return
                 
+                update_vals = {
+                    'import_progress_count_persisted': imported_count,
+                }
+                if total_count is not None:
+                    update_vals['import_total_count_persisted'] = total_count
+                
+                connection.sudo().write(update_vals)
+                progress_cr.commit()
+            except Exception as e:
+                if progress_cr and not progress_cr.closed:
+                    progress_cr.rollback()
+                _logger.debug(f"Error updating connection progress (non-critical): {e}")
+        except Exception as e:
+            _logger.debug(f"Could not create cursor for progress update (non-critical): {e}")
+        finally:
+            # Always close the cursor if it was opened
+            if progress_cr and not progress_cr.closed:
+                try:
+                    progress_cr.close()
+                except Exception:
+                    pass
+    
+    def _append_to_connection_log(self, message):
+        """Append a message to the connection's import log (keeps last 10000 chars)
+        
+        Simplified version that's more reliable. Uses a separate transaction to avoid
+        aborting the main import transaction if there's a concurrency error.
+        Non-blocking - will silently fail if database connections are exhausted.
+        """
+        if not self.connection_id:
+            return
+        
+        if not message:
+            return
 
+        log_cr = None
+        try:
+            # Try to get a cursor, but don't wait if connections are exhausted
+            try:
+                log_cr = self.env.registry.cursor()
+            except Exception as cursor_error:
+                # If we can't get a cursor (e.g., connection pool exhausted), just skip logging
+                _logger.debug(f"Could not get cursor for log update (non-critical): {cursor_error}")
+                return
+            
+            try:
+                log_env = self.env(cr=log_cr)
+                connection = log_env['woocommerce.connection'].browse(self.connection_id.id)
+                
+                if not connection.exists():
+                    return
+                
+                # Simple lock with NOWAIT to avoid hanging
+                try:
+                    log_cr.execute(
+                        "SELECT id FROM woocommerce_connection WHERE id = %s FOR UPDATE NOWAIT",
+                        (self.connection_id.id,)
+                    )
+                except Exception as lock_error:
+                    # Lock failed, skip this log update
+                    _logger.debug(f"Could not lock connection for log update (non-critical): {lock_error}")
+                    return
+                
+                # Refresh and get current log
+                connection.invalidate_recordset(['import_log'])
+                connection = log_env['woocommerce.connection'].browse(self.connection_id.id)
+                
                 current_log = connection.import_log or ''
                 new_log = current_log + '\n' + message if current_log else message
                 
+                # Keep last 10000 chars
+                if len(new_log) > 10000:
+                    new_log = '...' + new_log[-9997:]
 
-                if len(new_log) > 5000:
-                    new_log = '...' + new_log[-4997:]
-                
-
+                # Write the log
                 connection.sudo().write({'import_log': new_log})
-                new_cr.commit()
-                new_cr.close()
-                
+                log_cr.commit()
+
             except Exception as e:
-
-                new_cr.rollback()
-                new_cr.close()
-
-                error_str = str(e).lower()
-                if 'serialize' in error_str or 'concurrent' in error_str:
-                    _logger.debug(f"Concurrency error updating connection log (non-critical): {e}")
-                else:
-                    _logger.warning(f"Could not update connection log: {e}")
-                    
+                if log_cr and not log_cr.closed:
+                    log_cr.rollback()
+                # Don't log as warning - this is non-critical
+                _logger.debug(f"Could not update connection log (non-critical): {e}")
         except Exception as e:
-
-            _logger.warning(f"Could not create separate transaction for log update: {e}")
+            # Don't log as warning - this is non-critical
+            _logger.debug(f"Could not create cursor for log update (non-critical): {e}")
+        finally:
+            # Always close the cursor if it was opened
+            if log_cr and not log_cr.closed:
+                try:
+                    log_cr.close()
+                except Exception:
+                    pass
     
     def action_start_import(self):
         """Start the import process - first batch"""
         self.ensure_one()
+        _logger.info(f'Starting import for wizard ID {self.id}, connection: {self.connection_id.name if self.connection_id else "None"}')
         
 
 
@@ -361,6 +440,7 @@ class WooCommerceImportWizard(models.TransientModel):
     def _start_background_import_logic(self):
         """Start import in background using scheduled action"""
         self.ensure_one()
+        _logger.info(f'_start_background_import_logic called for wizard ID {self.id}')
         
 
         try:
@@ -591,20 +671,37 @@ class WooCommerceImportWizard(models.TransientModel):
                 'user_id': self.env.uid,
             })
             
-            _logger.info(f'Cron job {cron_name} created successfully for connection {self.connection_id.name}')
+            # Commit the cron job creation to ensure it persists
+            self.env.cr.commit()
+            _logger.info(f'Cron job {cron_name} (ID: {cron.id}) created successfully for connection {self.connection_id.name}')
             
 
-            _logger.info('Fetching all products immediately...')
-            try:
-                self._import_all_products_immediately()
-                _logger.info('All products fetched and queued for processing')
-            except Exception as e:
-                _logger.error(f'Error fetching all products: {e}')
-
+            # For large imports, use batch-based approach instead of processing all at once
+            # This prevents timeouts and allows the cron job to continue processing
+            # Use self instead of wizard since wizard is out of scope after the with block
+            total_to_import = self.import_limit if self.import_limit > 0 else self.total_products
+            if total_to_import > 20:
+                _logger.info(f'Large import detected ({total_to_import} products). Using batch-based approach to avoid timeout.')
+                self._append_to_connection_log(_('\n📦 Large import detected. Processing in batches to avoid timeout...'))
+                # Process first batch immediately, then let cron handle the rest
                 try:
                     self._import_single_batch()
-                except Exception as fallback_error:
-                    _logger.error(f'Error in fallback batch processing: {fallback_error}')
+                    _logger.info('First batch processed. Remaining batches will be processed by cron job.')
+                except Exception as batch_error:
+                    _logger.error(f'Error processing first batch: {batch_error}')
+                    self._append_to_connection_log(_('\n❌ Error processing first batch: %s') % str(batch_error))
+            else:
+                _logger.info('Fetching all products immediately...')
+                try:
+                    self._import_all_products_immediately()
+                    _logger.info('All products fetched and queued for processing')
+                except Exception as e:
+                    _logger.error(f'Error fetching all products: {e}')
+
+                    try:
+                        self._import_single_batch()
+                    except Exception as fallback_error:
+                        _logger.error(f'Error in fallback batch processing: {fallback_error}')
             
         except Exception as e:
             _logger.error(f'Error creating cron job: {e}')
@@ -683,6 +780,32 @@ class WooCommerceImportWizard(models.TransientModel):
                 completion_msg = _('\n🎉 Import completed: %d products imported successfully!') % imported_count
                 wizard._append_to_connection_log(completion_msg)
                 
+                # Auto-import categories and coupons if enabled
+                try:
+                    if wizard.auto_import_categories:
+                        _logger.info(f'Auto-importing categories for connection {self.connection_id.name}')
+                        wizard._append_to_connection_log(_('\n📁 Auto-importing categories...'))
+                        try:
+                            self.connection_id.action_import_categories()
+                            wizard._append_to_connection_log(_('✅ Categories imported successfully'))
+                            _logger.info('Categories auto-imported successfully')
+                        except Exception as cat_error:
+                            _logger.error(f'Error auto-importing categories: {cat_error}')
+                            wizard._append_to_connection_log(_('⚠️ Error importing categories: %s') % str(cat_error))
+                    
+                    if wizard.auto_import_coupons:
+                        _logger.info(f'Auto-importing coupons for connection {self.connection_id.name}')
+                        wizard._append_to_connection_log(_('\n🎫 Auto-importing coupons...'))
+                        try:
+                            self.connection_id.action_import_coupons()
+                            wizard._append_to_connection_log(_('✅ Coupons imported successfully'))
+                            _logger.info('Coupons auto-imported successfully')
+                        except Exception as coupon_error:
+                            _logger.error(f'Error auto-importing coupons: {coupon_error}')
+                            wizard._append_to_connection_log(_('⚠️ Error importing coupons: %s') % str(coupon_error))
+                except Exception as auto_import_error:
+                    _logger.error(f'Error in auto-import process: {auto_import_error}')
+                    wizard._append_to_connection_log(_('⚠️ Error in auto-import process: %s') % str(auto_import_error))
 
                 self.connection_id.sudo().write({
                     'import_in_progress_persisted': False,
@@ -743,39 +866,9 @@ class WooCommerceImportWizard(models.TransientModel):
             
 
 
-            try:
-
-                self.env.cr.execute(
-                    "SELECT id FROM woocommerce_connection WHERE id = %s FOR UPDATE NOWAIT",
-                    (self.connection_id.id,)
-                )
-                self.connection_id.sudo().write({
-                    'import_progress_count_persisted': wizard.imported_count,
-                    'import_total_count_persisted': self.import_limit if self.import_limit > 0 else self.total_products,
-                })
-                self.env.cr.commit()
-            except Exception as lock_error:
-
-                self.env.cr.rollback()
-                if 'could not obtain lock' in str(lock_error).lower() or 'serialize' in str(lock_error).lower():
-                    _logger.warning(f'Connection record locked, will retry: {lock_error}')
-
-                    try:
-                        self.env.cr.execute(
-                            "SELECT id FROM woocommerce_connection WHERE id = %s FOR UPDATE",
-                            (self.connection_id.id,)
-                        )
-                        self.connection_id.sudo().write({
-                            'import_progress_count_persisted': wizard.imported_count,
-                            'import_total_count_persisted': self.import_limit if self.import_limit > 0 else self.total_products,
-                        })
-                        self.env.cr.commit()
-                    except Exception as retry_error:
-                        self.env.cr.rollback()
-                        _logger.error(f'Failed to update connection progress after retry: {retry_error}')
-                else:
-                    _logger.error(f'Error updating connection progress: {lock_error}')
-                    self.env.cr.rollback()
+            # Update connection progress using the new reliable method
+            total_to_import = self.import_limit if self.import_limit > 0 else self.total_products
+            wizard._update_connection_progress(wizard.imported_count, total_to_import)
             
 
 
@@ -1087,10 +1180,7 @@ class WooCommerceImportWizard(models.TransientModel):
                 pass
     
     def _process_all_products_at_once(self, products_data, wizard):
-        """Process all products at once using the same logic as _import_single_batch"""
-
-
-
+        """Process all products in batches to avoid timeout"""
         
         batch_imported = 0
         batch_updated = 0
@@ -1100,7 +1190,24 @@ class WooCommerceImportWizard(models.TransientModel):
         
         processed_products = set()
         
-        for idx, product_data in enumerate(products_data):
+        # Process in smaller batches to avoid timeout (10 products per batch)
+        batch_size = 10
+        total_products = len(products_data)
+        
+        _logger.info(f'Processing {total_products} products in batches of {batch_size}...')
+        
+        for batch_start in range(0, total_products, batch_size):
+            batch_end = min(batch_start + batch_size, total_products)
+            batch_products = products_data[batch_start:batch_end]
+            batch_num = (batch_start // batch_size) + 1
+            total_batches = (total_products + batch_size - 1) // batch_size
+            
+            _logger.info(f'Processing batch {batch_num}/{total_batches} (products {batch_start+1}-{batch_end} of {total_products})...')
+            wizard._append_to_connection_log(_('\n📦 Processing batch %d/%d (products %d-%d)...') % (batch_num, total_batches, batch_start+1, batch_end))
+            
+            # Process each product in this batch
+            for idx_in_batch, product_data in enumerate(batch_products):
+                idx = batch_start + idx_in_batch
             product_id = product_data.get('id', f'unknown_{idx}')
             product_name = product_data.get('name', 'Unknown')
             
@@ -1210,6 +1317,32 @@ class WooCommerceImportWizard(models.TransientModel):
             except Exception as e:
                 _logger.error(f'Error processing product {product_name} (WC ID: {product_id}): {e}')
                 batch_errors += 1
+            
+            # Commit and update progress after each batch
+            try:
+                with self.env.registry.cursor() as batch_cr:
+                    batch_env = self.env(cr=batch_cr)
+                    batch_wizard = batch_env['woocommerce.import.wizard'].browse(wizard.id)
+                    if batch_wizard.exists():
+                        batch_wizard.write({
+                            'imported_count': batch_imported + batch_updated,
+                            'error_count': batch_errors,
+                            'progress_current': batch_end,
+                            'progress_total': len(products_data),
+                            'progress_message': f'✅ Batch {batch_num}/{total_batches} complete: {batch_end}/{len(products_data)} products processed',
+                        })
+                        
+                        batch_connection = batch_env['woocommerce.connection'].browse(self.connection_id.id)
+                        if batch_connection.exists():
+                            batch_connection.write({
+                                'import_progress_count_persisted': batch_end,
+                                'import_total_count_persisted': len(products_data),
+                            })
+                        batch_cr.commit()
+                
+                _logger.info(f'Batch {batch_num}/{total_batches} complete: {batch_end}/{len(products_data)} products processed (imported: {batch_imported}, errors: {batch_errors})')
+            except Exception as progress_error:
+                _logger.warning(f'Could not update batch progress: {progress_error}')
         
 
         total_imported = batch_imported + batch_updated
@@ -1352,19 +1485,32 @@ class WooCommerceImportWizard(models.TransientModel):
                         _logger.error(f"Error importing image: {e}")
             
 
+            # Process categories and attributes in the same cursor before committing
+            # Get wizard in the same environment to avoid cross-cursor issues
+            wizard_in_env = product_env['woocommerce.import.wizard'].browse(wizard.id)
+            if wizard_in_env.exists():
+                if wizard_in_env.import_categories and product_data.get('categories'):
+                    wizard_in_env._map_product_categories(wc_product, product_data.get('categories'))
+
+                if wizard_in_env.import_attributes:
+                    wizard_in_env._process_product_attributes(odoo_product, product_data)
+            
+            # Commit the transaction - all work is done in this cursor
+            # If we reach here without exception, the records were created successfully
             product_cr.commit()
             
-
-            odoo_product = self.env['product.template'].browse(odoo_product.id)
-            wc_product = self.env['woocommerce.product'].browse(wc_product.id)
+            # Store IDs for potential later use (but don't verify existence across cursors)
+            # The records are created successfully if we reach here without exception
+            odoo_product_id = odoo_product.id
+            wc_product_id = wc_product.id
             
-
-            if wizard.import_categories and product_data.get('categories'):
-                wizard._map_product_categories(wc_product, product_data.get('categories'))
-            
-
-            if wizard.import_attributes:
-                wizard._process_product_attributes(odoo_product, product_data)
+            # Close the separate cursor
+            if product_cr and not product_cr.closed:
+                try:
+                    product_cr.close()
+                except Exception:
+                    pass
+            product_cr = None
             
         except Exception as e:
             if product_cr:
@@ -1372,8 +1518,14 @@ class WooCommerceImportWizard(models.TransientModel):
                     product_cr.rollback()
                 except Exception:
                     pass
+                try:
+                    if not product_cr.closed:
+                        product_cr.close()
+                except Exception:
+                    pass
             raise
         finally:
+            # Ensure cursor is closed
             if product_cr and not product_cr.closed:
                 try:
                     product_cr.close()
@@ -1599,6 +1751,9 @@ class WooCommerceImportWizard(models.TransientModel):
                                         try:
                                             log_msg = _('\n🔄 Updated: %s (WC ID: %s)') % (product_name, product_id)
                                             wizard._append_to_connection_log(log_msg.strip())
+                                            
+                                            # Progress will be updated after batch completion
+                                            # (updating here would cause too many database calls)
                                         except Exception:
                                             pass
                                     else:
@@ -1721,20 +1876,38 @@ class WooCommerceImportWizard(models.TransientModel):
                                 except Exception as e:
                                     _logger.error(f"Error importing image: {e}")
                         
+                        # Do category and attribute mapping BEFORE committing/closing cursor
+                        # This ensures we're working with records in the same transaction
+                        if wizard.import_categories and product_data.get('categories'):
+                            try:
+                                # Refresh wc_product to ensure it's accessible
+                                wc_product.invalidate_recordset()
+                                wc_product = product_env['woocommerce.product'].browse(wc_product.id)
+                                if wc_product.exists():
+                                    # Use product_env to access wizard for category mapping
+                                    wizard_for_cat = product_env['woocommerce.import.wizard'].browse(wizard.id)
+                                    if wizard_for_cat.exists():
+                                        wizard_for_cat._map_product_categories(wc_product, product_data.get('categories'))
+                            except Exception as cat_error:
+                                _logger.warning(f"Error mapping categories for {product_name} (WC ID: {product_id}): {cat_error}")
+                        
+                        if wizard.import_attributes:
+                            try:
+                                # Refresh odoo_product to ensure it's accessible
+                                odoo_product.invalidate_recordset()
+                                odoo_product = product_env['product.template'].browse(odoo_product.id)
+                                if odoo_product.exists():
+                                    # Use product_env to access wizard for attribute processing
+                                    wizard_for_attr = product_env['woocommerce.import.wizard'].browse(wizard.id)
+                                    if wizard_for_attr.exists():
+                                        wizard_for_attr._process_product_attributes(odoo_product, product_data)
+                            except Exception as attr_error:
+                                _logger.warning(f"Error processing attributes for {product_name} (WC ID: {product_id}): {attr_error}")
 
                         product_cr.commit()
                         
-
-                        odoo_product = self.env['product.template'].browse(odoo_product.id)
-                        wc_product = self.env['woocommerce.product'].browse(wc_product.id)
-                        
-
-                        if wizard.import_categories and product_data.get('categories'):
-                            wizard._map_product_categories(wc_product, product_data.get('categories'))
-                        
-
-                        if wizard.import_attributes:
-                            wizard._process_product_attributes(odoo_product, product_data)
+                        # Mark as successfully imported - product was created successfully
+                        # Don't try to access from main cursor as it may not see the record yet
                         
                     except Exception as e:
                         if product_cr:
@@ -1761,6 +1934,9 @@ class WooCommerceImportWizard(models.TransientModel):
                             'log_message': str(wizard.log_message or '') + log_msg
                         })
                         wizard._append_to_connection_log(log_msg.strip())
+                        
+                        # Progress will be updated after batch completion
+                        # (updating here would cause too many database calls)
                     except Exception:
                         pass
                     
@@ -1858,8 +2034,9 @@ class WooCommerceImportWizard(models.TransientModel):
                                 break
                         
 
+                        new_imported_count = wizard_update.imported_count + batch_imported
                         wizard_update.sudo().write({
-                            'imported_count': wizard_update.imported_count + batch_imported,
+                            'imported_count': new_imported_count,
                             'error_count': wizard_update.error_count + batch_errors,
                             'batches_completed': wizard_update.batches_completed + 1,
                             'current_batch': wizard_update.current_batch + 1,
@@ -1870,6 +2047,9 @@ class WooCommerceImportWizard(models.TransientModel):
 
                         wizard_update._append_to_connection_log(batch_log.strip())
                         
+                        # Update connection progress after batch completion
+                        total_to_import = wizard_update.import_limit if wizard_update.import_limit > 0 else wizard_update.total_products
+                        wizard_update._update_connection_progress(new_imported_count, total_to_import)
 
                         update_cr.commit()
                         update_success = True

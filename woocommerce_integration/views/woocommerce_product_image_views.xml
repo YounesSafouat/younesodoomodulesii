@@ -54,18 +54,26 @@
                             <strong>This is the MAIN IMAGE</strong> - It will appear first in WooCommerce
                         </div>
 
+                        <div class="alert alert-warning" role="alert" invisible="not wc_image_id">
+                            <h4><i class="fa fa-lock"/> Sensitive Information</h4>
+                            <p>The <strong>WooCommerce Image ID</strong> and <strong>Product</strong> are sensitive fields that link this image to your WooCommerce store. Changing these could break the synchronization.</p>
+                        </div>
+
                         <group>
                             <group>
                                 <field name="name" string="Image Name"/>
+                                <field name="product_id" readonly="1"
+                                       help="The WooCommerce product this image belongs to. This should not be changed as it could break synchronization."/>
                                 <field name="sequence" string="Order" 
-                                       help="Lower numbers appear first (main image should be 5)"/>
+                                       help="Lower numbers appear first (main image should be 0)"/>
                                 <field name="is_main_image" string="Main Image" 
                                        help="Check to make this the primary product image"/>
                                 <field name="alt_text" string="Alt Text" 
                                        help="Alternative text for accessibility"/>
                             </group>
                             <group>
-                                <field name="wc_image_id" readonly="1" string="WooCommerce ID"/>
+                                <field name="wc_image_id" readonly="1" string="WooCommerce ID"
+                                       help="WooCommerce Image ID - This is set automatically when the image is synced. Do not change this."/>
                                 <field name="wc_image_url" readonly="1" string="WooCommerce URL"/>
                                 <field name="sync_status" string="Sync Status"/>
                                 <field name="sync_error" readonly="1" string="Last Error"

@@ -63,11 +63,17 @@
                             </h1>
                         </div>
 
+                        <div class="alert alert-warning" role="alert">
+                            <h4><i class="fa fa-lock"/> Sensitive Information</h4>
+                            <p>The <strong>WooCommerce Variation ID</strong>, <strong>Connection</strong>, and <strong>Odoo Variant</strong> are sensitive fields that link this variation to your WooCommerce store and Odoo. Changing these could break the synchronization.</p>
+                        </div>
+
                         <group string="WooCommerce Variation">
                             <group>
                                 <field name="product_id" readonly="1"/>
                                 <field name="connection_id" readonly="1"/>
-                                <field name="wc_variation_id"/>
+                                <field name="wc_variation_id" readonly="1"
+                                       help="WooCommerce Variation ID - This is set automatically when the variation is synced. Do not change this."/>
                                 <field name="wc_sku"/>
                             </group>
                             <group>
@@ -81,7 +87,8 @@
 
                         <group string="Odoo Variant">
                             <group>
-                                <field name="odoo_variant_id"/>
+                                <field name="odoo_variant_id" readonly="1"
+                                       help="Linked Odoo product variant. This is set automatically and should not be changed manually."/>
                                 <field name="odoo_product_template_id" readonly="1"/>
                             </group>
                         </group>

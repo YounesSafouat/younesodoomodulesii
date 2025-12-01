@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Search View for WooCommerce Promotions (must be defined before action) -->
+        <record id="view_woocommerce_promotion_search" model="ir.ui.view">
+            <field name="name">woocommerce.promotion.search</field>
+            <field name="model">woocommerce.promotion</field>
+            <field name="arch" type="xml">
+                <search string="Search Promotions">
+                    <field name="name"/>
+                    <field name="connection_id"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                    <filter string="Draft" name="draft" domain="[('status', '=', 'draft')]"/>
+                    <filter string="Scheduled" name="scheduled" domain="[('status', '=', 'scheduled')]"/>
+                    <filter string="Active" name="status_active" domain="[('status', '=', 'active')]"/>
+                    <filter string="Expired" name="expired" domain="[('status', '=', 'expired')]"/>
+                    <filter string="Synced" name="synced" domain="[('sync_status', '=', 'synced')]"/>
+                    <filter string="Pending" name="pending" domain="[('sync_status', '=', 'pending')]"/>
+                    <filter string="Error" name="error" domain="[('sync_status', '=', 'error')]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Connection" name="group_by_connection" context="{'group_by': 'connection_id'}"/>
+                        <filter string="Status" name="group_by_status" context="{'group_by': 'status'}"/>
+                        <filter string="Discount Type" name="group_by_discount_type" context="{'group_by': 'discount_type'}"/>
+                        <filter string="Sync Status" name="group_by_sync_status" context="{'group_by': 'sync_status'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Tree View for WooCommerce Promotions -->
+        <record id="view_woocommerce_promotion_tree" model="ir.ui.view">
+            <field name="name">woocommerce.promotion.tree</field>
+            <field name="model">woocommerce.promotion</field>
+            <field name="arch" type="xml">
+                <list string="WooCommerce Promotions" decoration-danger="status == 'expired'" decoration-success="status == 'active'">
+                    <field name="name"/>
+                    <field name="connection_id"/>
+                    <field name="discount_type"/>
+                    <field name="discount_value"/>
+                    <field name="product_count"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                    <field name="status" widget="badge"
+                           decoration-success="status == 'active'"
+                           decoration-warning="status == 'scheduled'"
+                           decoration-danger="status == 'expired'"
+                           decoration-muted="status == 'draft'"/>
+                    <field name="sync_status" widget="badge"
+                           decoration-success="sync_status == 'synced'"
+                           decoration-warning="sync_status == 'pending'"
+                           decoration-danger="sync_status == 'error'"/>
+                    <field name="active" widget="boolean_toggle"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Form View for WooCommerce Promotions -->
+        <record id="view_woocommerce_promotion_form" model="ir.ui.view">
+            <field name="name">woocommerce.promotion.form</field>
+            <field name="model">woocommerce.promotion</field>
+            <field name="arch" type="xml">
+                <form string="WooCommerce Promotion">
+                    <header>
+                        <button name="action_apply_promotion" string="Apply Promotion" type="object" 
+                                class="btn-primary" icon="fa-check"
+                                invisible="status == 'active' or status == 'expired'"/>
+                        <button name="action_remove_promotion" string="Remove Promotion" type="object" 
+                                class="btn-secondary" icon="fa-times"
+                                invisible="status != 'active'"/>
+                        <button name="action_sync_to_woocommerce" string="Sync to WooCommerce" type="object" 
+                                class="oe_highlight" icon="fa-sync"
+                                invisible="not connection_id"/>
+                        <field name="status" widget="statusbar" statusbar_visible="draft,scheduled,active,expired"/>
+                    </header>
+                           <sheet>
+                               <div class="alert alert-info" role="alert">
+                                   <h4><i class="fa fa-percent"/> WooCommerce Promotions</h4>
+                                   <p><strong>What are Promotions?</strong></p>
+                                   <p>Promotions automatically apply discounts to products without requiring customers to enter a code. They are different from Coupons, which require a code at checkout.</p>
+                                   <p><strong>How Promotions Work:</strong></p>
+                                   <ol>
+                                       <li>Create a promotion with a discount (percentage or fixed amount)</li>
+                                       <li>Select which products or categories the promotion applies to</li>
+                                       <li>Set start and end dates (optional)</li>
+                                       <li>Click "Apply Promotion" to calculate and set sale prices on products</li>
+                                       <li>The sale price is automatically calculated and synced to WooCommerce</li>
+                                   </ol>
+                                   <p><strong>Important Notes:</strong></p>
+                                   <ul>
+                                       <li>Promotions automatically calculate the <strong>Sale Price</strong> based on the regular price</li>
+                                       <li>If you change a product's regular price, the sale price is automatically recalculated</li>
+                                       <li>When a promotion ends, sale prices return to match regular prices</li>
+                                       <li>Only one promotion can be active per product at a time</li>
+                                   </ul>
+                                   <p><strong>Difference from Coupons:</strong> Promotions automatically apply discounts. Coupons require customers to enter a code at checkout.</p>
+                               </div>
+
+                               <div class="oe_button_box" name="button_box">
+                                   <button name="action_apply_promotion" type="object" class="oe_stat_button" icon="fa-percent"
+                                           invisible="status == 'active' or status == 'expired'">
+                                       <field name="product_count" widget="statinfo" string="Products"/>
+                                   </button>
+                                   <button name="action_sync_to_woocommerce" type="object" class="oe_stat_button" icon="fa-sync"
+                                           invisible="not connection_id">
+                                       <div class="o_field_widget o_stat_info">
+                                           <span class="o_stat_text">Sync</span>
+                                       </div>
+                                   </button>
+                               </div>
+                               
+                               <div class="alert alert-warning" role="alert">
+                                   <h4><i class="fa fa-lock"/> Sensitive Information</h4>
+                                   <p>The <strong>Connection</strong> field links this promotion to your WooCommerce store. Once set and products are synced, changing it could break the synchronization.</p>
+                               </div>
+
+                               <group>
+                                   <group>
+                                       <field name="name" required="1"/>
+                                       <field name="connection_id" required="1" options="{'no_create': True}" 
+                                              domain="[('active', '=', True)]"
+                                              help="WooCommerce connection. Once set, this should not be changed as it could break synchronization."/>
+                                       <field name="description" placeholder="Promotion description"/>
+                                   </group>
+                            <group>
+                                <field name="discount_type" required="1"/>
+                                <field name="discount_value" required="1"/>
+                                <field name="date_start" required="1"/>
+                                <field name="date_end"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Products" name="products">
+                                <group>
+                                    <group string="Selected Products">
+                                        <field name="product_ids" widget="many2many_tags" 
+                                               domain="[('sale_ok', '=', True)]"
+                                               help="Specific products to include in this promotion"/>
+                                    </group>
+                                    <group string="Product Categories">
+                                        <field name="product_category_ids" widget="many2many_tags"
+                                               help="All products in these categories will be included"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Sync Information" name="sync_info">
+                                <group>
+                                    <group>
+                                        <field name="sync_status"/>
+                                        <field name="last_sync"/>
+                                        <field name="sync_error" widget="text" invisible="not sync_error"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action for WooCommerce Promotions -->
+        <record id="action_woocommerce_promotion" model="ir.actions.act_window">
+            <field name="name">Promotions</field>
+            <field name="res_model">woocommerce.promotion</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_woocommerce_promotion_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first WooCommerce promotion!
+                </p>
+                <p>
+                    Create promotional campaigns with discounts on products. 
+                    Set start and end dates, apply percentage or fixed discounts to products or categories.
+                </p>
+            </field>
+        </record>
+
+    </data>
+</odoo>
+

@@ -215,8 +215,30 @@ class WooCommerceConnection(models.Model):
     
     import_log = fields.Text(
         string='Import Log',
-        help='Detailed log of import operations (last 5000 characters)'
+        help='Detailed log of import operations (last 10000 characters). This log updates automatically during import operations.'
     )
+    
+    import_cron_status = fields.Char(
+        string='Import Cron Status',
+        compute='_compute_import_cron_status',
+        help='Status of the import cron job. Shows if the cron job exists and is active.'
+    )
+    
+    @api.depends('name', 'import_in_progress_persisted')
+    def _compute_import_cron_status(self):
+        """Compute the status of the import cron job"""
+        for connection in self:
+            if not connection.import_in_progress_persisted:
+                connection.import_cron_status = 'No import in progress'
+            else:
+                cron_name = f'WooCommerce Import - {connection.name}'
+                # Use a fresh search to ensure we get the latest data
+                cron = self.env['ir.cron'].sudo().with_context(prefetch_fields=False).search([('name', '=', cron_name)], limit=1)
+                if cron.exists():
+                    status = 'Active' if cron.active else 'Inactive'
+                    connection.import_cron_status = f'✅ Cron job exists: {status} (ID: {cron.id}, runs every {cron.interval_number} {cron.interval_type})'
+                else:
+                    connection.import_cron_status = '⚠️ Cron job missing - Click "Resume Import" to recreate it'
     
     @api.depends('import_progress_count_persisted', 'import_total_count_persisted', 'import_in_progress_persisted')
     def _compute_import_progress(self):
@@ -1243,6 +1265,62 @@ class WooCommerceConnection(models.Model):
             }
         }
     
+    def action_resume_import(self):
+        """Manually resume a stuck import by recreating the cron job and triggering the next batch"""
+        self.ensure_one()
+        
+        if not self.import_in_progress_persisted:
+            raise UserError(_('No import is currently running. Nothing to resume.'))
+        
+        _logger.info(f'Manually resuming import for connection {self.name}')
+        
+        # Check if cron job exists, recreate if missing
+        cron_name = f'WooCommerce Import - {self.name}'
+        cron = self.env['ir.cron'].sudo().search([('name', '=', cron_name)], limit=1)
+        
+        if not cron:
+            _logger.info(f'Import cron job missing, recreating for connection {self.name}')
+            model_id = self.env['ir.model'].sudo().search([('model', '=', 'woocommerce.connection')], limit=1).id
+            
+            if not model_id:
+                raise UserError(_('Could not find woocommerce.connection model'))
+            
+            cron = self.env['ir.cron'].sudo().create({
+                'name': cron_name,
+                'model_id': model_id,
+                'state': 'code',
+                'code': f'env["woocommerce.connection"].browse({self.id}).process_next_import_batch()',
+                'interval_number': 1,
+                'interval_type': 'minutes',
+                'active': True,
+                'user_id': self.env.uid,
+            })
+            # Commit the cron job creation to ensure it persists
+            self.env.cr.commit()
+            _logger.info(f'Recreated import cron job {cron_name} (ID: {cron.id}) for connection {self.name}')
+        elif not cron.active:
+            # Reactivate if it exists but is inactive
+            cron.sudo().write({'active': True})
+            self.env.cr.commit()
+            _logger.info(f'Reactivated import cron job {cron_name} (ID: {cron.id}) for connection {self.name}')
+        
+        try:
+            # Try to process the next batch immediately
+            self.process_next_import_batch()
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Import Resumed'),
+                    'message': _('The import cron job has been recreated/activated and batch processing has been triggered. The import will continue automatically every minute. Check the import log for progress.'),
+                    'type': 'success',
+                }
+            }
+        except Exception as e:
+            _logger.error(f'Error resuming import: {e}')
+            raise UserError(_('Failed to resume import: %s') % str(e))
+    
     def _parse_woocommerce_error(self, error_details):
         """Parse WooCommerce API error and return user-friendly message"""
         try:
@@ -1309,4 +1387,185 @@ class WooCommerceConnection(models.Model):
         except Exception as e:
             _logger.warning(f"Error parsing WooCommerce error text: {e}")
             return _('WooCommerce API Error: %s') % error_text[:200]
+    
+    def get_coupons(self, page=1, per_page=100, **kwargs):
+        """Get coupons from WooCommerce"""
+        self.ensure_one()
+        
+        url = self._get_api_url('coupons')
+        headers = self._get_auth_headers()
+        
+        params = {
+            'page': page,
+            'per_page': per_page,
+        }
+        params.update(kwargs)
+        
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=600)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error fetching coupons from WooCommerce: {e}")
+            raise UserError(_('Failed to fetch coupons from WooCommerce: %s') % str(e))
+    
+    def get_coupon(self, coupon_id):
+        """Get a specific coupon from WooCommerce"""
+        self.ensure_one()
+        
+        url = self._get_api_url(f'coupons/{coupon_id}')
+        headers = self._get_auth_headers()
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=600)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error fetching coupon {coupon_id} from WooCommerce: {e}")
+            raise UserError(_('Failed to fetch coupon from WooCommerce: %s') % str(e))
+    
+    def create_coupon(self, coupon_data):
+        """Create a new coupon in WooCommerce"""
+        self.ensure_one()
+        
+        coupon_data = coupon_data.copy()
+        coupon_data.pop('id', None)
+        coupon_data.pop('wc_coupon_id', None)
+        
+        url = self._get_api_url('coupons')
+        headers = self._get_auth_headers()
+        
+        try:
+            _logger.info(f"Creating WooCommerce coupon with data: {coupon_data}")
+            response = requests.post(url, headers=headers, json=coupon_data, timeout=600)
+            
+            if response.status_code == 400:
+                try:
+                    error_details = response.json()
+                    _logger.error(f"WooCommerce 400 Error during coupon creation: {error_details}")
+                    error_message = self._parse_woocommerce_error(error_details)
+                    raise UserError(error_message)
+                except UserError:
+                    raise
+                except:
+                    _logger.error(f"WooCommerce 400 Error during coupon creation: {response.text}")
+                    error_message = self._parse_woocommerce_error_text(response.text)
+                    raise UserError(error_message)
+            
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error creating coupon in WooCommerce: {e}")
+            raise UserError(_('Failed to create coupon in WooCommerce: %s') % str(e))
+    
+    def update_coupon(self, coupon_id, coupon_data):
+        """Update an existing coupon in WooCommerce"""
+        self.ensure_one()
+        
+        try:
+            coupon_id = int(str(coupon_id).replace(',', '').replace(' ', ''))
+        except (ValueError, TypeError):
+            raise UserError(_('Invalid coupon ID: %s. Coupon ID must be a number.') % coupon_id)
+        
+        coupon_data = coupon_data.copy()
+        coupon_data.pop('id', None)
+        coupon_data.pop('wc_coupon_id', None)
+        
+        url = self._get_api_url(f'coupons/{coupon_id}')
+        headers = self._get_auth_headers()
+        
+        try:
+            _logger.info(f"Updating WooCommerce coupon {coupon_id} with data: {coupon_data}")
+            response = requests.put(url, headers=headers, json=coupon_data, timeout=600)
+            
+            _logger.info(f"WooCommerce API Response - Status: {response.status_code}")
+            if response.status_code not in [200, 201]:
+                _logger.warning(f"WooCommerce API Response Text: {response.text}")
+            
+            if response.status_code == 400:
+                try:
+                    error_details = response.json()
+                    _logger.error(f"WooCommerce 400 Error for coupon {coupon_id}: {error_details}")
+                    error_message = self._parse_woocommerce_error(error_details)
+                    raise UserError(error_message)
+                except UserError:
+                    raise
+                except:
+                    _logger.error(f"WooCommerce 400 Error for coupon {coupon_id}: {response.text}")
+                    error_message = self._parse_woocommerce_error_text(response.text)
+                    raise UserError(error_message)
+            
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error updating coupon {coupon_id} in WooCommerce: {e}")
+            raise UserError(_('Failed to update coupon in WooCommerce: %s') % str(e))
+    
+    def delete_coupon(self, coupon_id):
+        """Delete a coupon from WooCommerce"""
+        self.ensure_one()
+        
+        url = self._get_api_url(f'coupons/{coupon_id}')
+        headers = self._get_auth_headers()
+        
+        try:
+            response = requests.delete(url, headers=headers, timeout=600)
+            response.raise_for_status()
+            return True
+        except requests.exceptions.RequestException as e:
+            _logger.error(f"Error deleting coupon {coupon_id} from WooCommerce: {e}")
+            raise UserError(_('Failed to delete coupon from WooCommerce: %s') % str(e))
+    
+    def action_import_coupons(self):
+        """Action to import coupons from WooCommerce"""
+        self.ensure_one()
+        
+        if self.connection_status != 'success':
+            raise UserError(_('Please test the connection first before importing coupons.'))
+        
+        try:
+            coupons_data = self.get_coupons(per_page=100)
+            
+            if not coupons_data:
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': _('No Coupons'),
+                        'message': _('No coupons found in WooCommerce'),
+                        'type': 'warning',
+                    }
+                }
+            
+            Coupon = self.env['woocommerce.coupon']
+            created_count = 0
+            updated_count = 0
+            
+            for coupon_data in coupons_data:
+                existing = Coupon.search([
+                    ('wc_coupon_id', '=', coupon_data['id']),
+                    ('connection_id', '=', self.id)
+                ], limit=1)
+                
+                if existing:
+                    existing._update_from_woocommerce_data(coupon_data)
+                    updated_count += 1
+                else:
+                    Coupon.create_from_wc_data(coupon_data, self.id)
+                    created_count += 1
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Coupons Imported'),
+                    'message': _('Created: %d, Updated: %d coupons') % (created_count, updated_count),
+                    'type': 'success',
+                    'sticky': False,
+                }
+            }
+            
+        except Exception as e:
+            _logger.error(f"Error importing coupons: {str(e)}")
+            raise UserError(_('Failed to import coupons: %s') % str(e))
     

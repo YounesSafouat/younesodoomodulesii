@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <data>
 
     <record id="woocommerce_order_webhook_tree_view" model="ir.ui.view">
         <field name="name">woocommerce.order.webhook.tree</field>
@@ -27,27 +28,63 @@
                     <field name="active" widget="boolean_button" options="{'terminology': 'archive'}"/>
                 </header>
                 <sheet>
+                    <div class="alert alert-info" role="alert">
+                        <h4><i class="fa fa-link"/> WooCommerce Order Webhooks</h4>
+                        <p><strong>What are Webhooks?</strong></p>
+                        <p>Webhooks allow WooCommerce to automatically notify Odoo when orders are created or updated in your store. This enables real-time order synchronization.</p>
+                        <p><strong>How to set up:</strong></p>
+                        <ol>
+                            <li>Create a webhook in Odoo (this form)</li>
+                            <li>Copy the <strong>Webhook URL</strong> shown below</li>
+                            <li>Go to your WooCommerce admin: <strong>WooCommerce → Settings → Advanced → Webhooks</strong></li>
+                            <li>Click "Add webhook" and paste the URL</li>
+                            <li>Select the webhook topic (e.g., "Order created")</li>
+                            <li>Set the delivery URL to the URL from step 2</li>
+                            <li>Save the webhook in WooCommerce</li>
+                        </ol>
+                        <p><strong>Auto Create Orders:</strong> When enabled, new WooCommerce orders will automatically create corresponding sales orders in Odoo.</p>
+                        <p><strong>Auto Create Customers:</strong> When enabled, new customers from WooCommerce orders will automatically be created in Odoo.</p>
+                    </div>
+
                     <div class="oe_title">
                         <h1>
                             <field name="name" placeholder="Webhook Name"/>
                         </h1>
                     </div>
 
+                    <div class="alert alert-warning" role="alert">
+                        <h4><i class="fa fa-lock"/> Sensitive Information</h4>
+                        <p>The <strong>Connection</strong> and <strong>Webhook URL</strong> are sensitive fields. Changing the connection after the webhook is configured in WooCommerce will break the integration.</p>
+                    </div>
+
                     <group>
                         <group>
-                            <field name="connection_id" options="{'no_create': True}"/>
-                            <field name="webhook_topic"/>
-                            <field name="order_prefix"/>
+                            <field name="connection_id" options="{'no_create': True}" readonly="1"
+                                   help="The WooCommerce connection this webhook is for. Once set and configured in WooCommerce, do not change this."/>
+                            <field name="webhook_topic"
+                                   help="The type of event that triggers this webhook (e.g., order.created, order.updated)"/>
+                            <field name="order_prefix"
+                                   help="Prefix to add to Odoo sales order names created from WooCommerce orders (e.g., 'WC-' will create orders like 'WC-00001')"/>
                         </group>
                         <group>
-                            <field name="auto_create_odoo_order" widget="boolean_toggle"/>
-                            <field name="auto_create_customer" widget="boolean_toggle"/>
-                            <field name="webhook_url" readonly="1"/>
+                            <field name="auto_create_odoo_order" widget="boolean_toggle"
+                                   help="Automatically create sales orders in Odoo when orders are received from WooCommerce"/>
+                            <field name="auto_create_customer" widget="boolean_toggle"
+                                   help="Automatically create customer records in Odoo for new customers from WooCommerce orders"/>
+                            <field name="webhook_url" readonly="1"
+                                   help="Copy this URL and paste it in WooCommerce webhook settings (WooCommerce → Settings → Advanced → Webhooks). This URL is generated automatically and should not be changed."/>
                         </group>
                     </group>
 
+                    <div class="alert alert-warning" role="alert">
+                        <h4><i class="fa fa-lock"/> Security</h4>
+                        <p>The webhook secret is used to verify that requests are coming from your WooCommerce store. Keep this secure.</p>
+                        <p><strong>Note:</strong> You'll need to configure this secret in your WooCommerce webhook settings as well.</p>
+                    </div>
+
                     <group string="Security">
-                        <field name="webhook_secret" password="True"/>
+                        <field name="webhook_secret" password="True"
+                               help="Secret key for webhook authentication. Configure this in WooCommerce webhook settings."/>
                     </group>
 
                     <notebook>
@@ -105,12 +142,6 @@
         </field>
     </record>
 
-    <menuitem id="menu_woocommerce_order_webhooks"
-              name="Order Webhooks"
-              parent="menu_woocommerce_main"
-              action="woocommerce_order_webhook_action"
-              sequence="40"/>
-
     <record id="woocommerce_order_webhook_log_tree_view" model="ir.ui.view">
         <field name="name">woocommerce.order.webhook.log.tree</field>
         <field name="model">woocommerce.order.webhook.log</field>
@@ -167,10 +198,5 @@
         </field>
     </record>
 
-    <menuitem id="menu_woocommerce_webhook_logs"
-              name="Webhook Logs"
-              parent="menu_woocommerce_main"
-              action="woocommerce_order_webhook_log_action"
-              sequence="41"/>
-
+    </data>
 </odoo>

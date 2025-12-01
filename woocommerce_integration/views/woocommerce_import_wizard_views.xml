@@ -15,18 +15,42 @@
                             <h1>Import Products from WooCommerce</h1>
                         </div>
 
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-download"/> Import Process</h4>
+                            <p>This wizard will import products from your WooCommerce store into Odoo. You can choose what to import and how to handle existing products.</p>
+                            <p><strong>Tips:</strong></p>
+                            <ul>
+                                <li>Start with a small <strong>Import Limit</strong> to test the process</li>
+                                <li>Enable <strong>Import Images</strong> to download product images</li>
+                                <li>Enable <strong>Import Categories</strong> to sync product categories</li>
+                                <li>Use <strong>Update if Exists</strong> to update existing products with new data</li>
+                            </ul>
+                        </div>
+
                         <group>
                             <group>
-                                <field name="connection_id" readonly="1"/>
-                                <field name="total_products" readonly="1"/>
-                                <field name="import_limit" invisible="state != 'draft'"/>
-                                <field name="batch_size" invisible="state != 'draft'"/>
+                                <field name="connection_id" readonly="1"
+                                       help="The WooCommerce connection to import from"/>
+                                <field name="total_products" readonly="1"
+                                       help="Total number of products available in your WooCommerce store"/>
+                                <field name="import_limit" invisible="state != 'draft'"
+                                       help="Maximum number of products to import. Leave empty or 0 to import all products. Recommended: Start with 10-20 products to test."/>
+                                <field name="batch_size" invisible="state != 'draft'"
+                                       help="Number of products to process in each batch. Smaller batches use less memory but take longer. Recommended: 10-50 products per batch."/>
                             </group>
                             <group>
-                                <field name="import_categories" invisible="state != 'draft'"/>
-                                <field name="import_images" invisible="state != 'draft'"/>
-                                <field name="image_download_mode" invisible="state != 'draft' or not import_images"/>
-                                <field name="import_attributes" invisible="state != 'draft'"/>
+                                <field name="import_categories" invisible="state != 'draft'"
+                                       help="Import product categories from WooCommerce and create corresponding categories in Odoo"/>
+                                <field name="auto_import_categories" invisible="state != 'draft'"
+                                       help="Automatically import all WooCommerce categories after products are imported. This ensures all product categories are available in Odoo."/>
+                                <field name="auto_import_coupons" invisible="state != 'draft'"
+                                       help="Automatically import all WooCommerce coupons after products are imported. This helps track which products have associated coupons."/>
+                                <field name="import_images" invisible="state != 'draft'"
+                                       help="Download and import product images from WooCommerce"/>
+                                <field name="image_download_mode" invisible="state != 'draft' or not import_images"
+                                       help="Download: Save images to Odoo. Link: Only store image URLs (faster but requires internet to view)."/>
+                                <field name="import_attributes" invisible="state != 'draft'"
+                                       help="Import product attributes (size, color, etc.) from WooCommerce"/>
                             </group>
                         </group>
 

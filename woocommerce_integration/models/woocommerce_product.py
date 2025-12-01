@@ -66,7 +66,8 @@ class WooCommerceProduct(models.Model):
     
     sale_price = fields.Float(
         string='Sale Price',
-        help='Sale price in WooCommerce'
+        readonly=True,
+        help='Sale price calculated from active promotions. If no promotion is active, it equals the regular price. This field is automatically calculated and cannot be edited.'
     )
     
     stock_status = fields.Selection([
@@ -263,9 +264,84 @@ class WooCommerceProduct(models.Model):
                 }
             }
     
+    def _ensure_inventory_image_is_main(self):
+        """Ensure that the Odoo inventory image (image_1920) is always the main image in WooCommerce product images"""
+        self.ensure_one()
+        
+        if not self.odoo_product_id or not self.odoo_product_id.image_1920:
+            return
+        
+        try:
+            # Unset ALL existing main images first
+            existing_main_images = self.product_image_ids.filtered(lambda img: img.is_main_image)
+            if existing_main_images:
+                existing_main_images.with_context(skip_wc_sync=True).write({'is_main_image': False})
+            
+            # Find or create the main image from inventory
+            inventory_main_image = self.product_image_ids.filtered(
+                lambda img: img.name and 'Main Image' in img.name
+            )
+            
+            if inventory_main_image:
+                # Update existing main image record
+                inventory_main_image = inventory_main_image[0]
+                inventory_main_image.with_context(skip_wc_sync=True).write({
+                    'image_1920': self.odoo_product_id.image_1920,
+                    'is_main_image': True,
+                    'sequence': 0,  # Main image should be first
+                    'sync_status': 'pending' if inventory_main_image.image_1920 != self.odoo_product_id.image_1920 else inventory_main_image.sync_status,
+                })
+                _logger.debug(f"Updated main image from inventory for product {self.name}")
+            else:
+                # Create new main image from inventory
+                inventory_main_image = self.env['woocommerce.product.image'].with_context(skip_wc_sync=True).create({
+                    'product_id': self.id,
+                    'image_1920': self.odoo_product_id.image_1920,
+                    'name': f"{self.odoo_product_id.name} - Main Image",
+                    'is_main_image': True,
+                    'sequence': 0,  # Main image should be first
+                    'sync_status': 'pending',
+                })
+                _logger.info(f"Created main image from inventory for product {self.name}")
+            
+            # Ensure it's the only main image
+            other_images = self.product_image_ids - inventory_main_image
+            if other_images:
+                other_images.filtered(lambda img: img.is_main_image).with_context(skip_wc_sync=True).write({'is_main_image': False})
+                
+        except Exception as e:
+            _logger.error(f"Error ensuring inventory image is main for product {self.name}: {e}")
+    
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create to ensure sale_price is set to regular_price initially"""
+        for vals in vals_list:
+            # If regular_price is set but sale_price is not, set sale_price = regular_price
+            if 'regular_price' in vals and 'sale_price' not in vals:
+                if vals.get('regular_price') and vals['regular_price'] > 0:
+                    vals['sale_price'] = vals['regular_price']
+        
+        products = super(WooCommerceProduct, self).create(vals_list)
+        
+        # After creation, recalculate sale_price from promotions if needed
+        for product in products:
+            if product.regular_price and product.odoo_product_id and product.connection_id:
+                # Recalculate from promotions (will set to regular_price if no promotion)
+                product._recalculate_sale_price_from_promotions(new_regular_price=product.regular_price)
+        
+        return products
+    
     def write(self, vals):
         """Override write to sync changes to WooCommerce and Odoo product"""
-        sync_fields = ['name', 'price', 'regular_price', 'sale_price', 'status', 'wc_sku', 'wc_data']
+        # Protect sensitive fields from being changed
+        sensitive_fields = ['wc_product_id', 'connection_id', 'odoo_product_id']
+        for field in sensitive_fields:
+            if field in vals:
+                for record in self:
+                    if record[field] and vals[field] != record[field]:
+                        raise UserError(_('Cannot change %s. This is a sensitive field that links the product to WooCommerce. Changing it could break synchronization.') % field)
+        
+        sync_fields = ['name', 'regular_price', 'sale_price', 'status', 'wc_sku', 'wc_data']
         
         sync_needed = any(key in vals for key in sync_fields)
         updated_fields = [key for key in vals.keys() if key in sync_fields]
@@ -279,13 +355,76 @@ class WooCommerceProduct(models.Model):
         
         result = super(WooCommerceProduct, self).write(vals)
         
+        # Ensure inventory image is always the main image
         for record in self:
+            if record.odoo_product_id and record.odoo_product_id.image_1920:
+                record._ensure_inventory_image_is_main()
+        
+        for record in self:
+            # Check sync direction before syncing to Odoo
+            # Only sync if direction is bidirectional or wc_to_odoo
+            sync_direction = None
+            if record.odoo_product_id:
+                sync_direction = record.odoo_product_id.wc_sync_direction
+            
+            # Sync regular_price to Odoo product list_price (bidirectional sync)
+            # Skip if update is coming from Odoo product to prevent loop
+            # Only sync if sync direction allows it (bidirectional or wc_to_odoo)
+            skip_regular_price_sync = self.env.context.get('skip_regular_price_sync', [])
+            if ('regular_price' in vals and record.odoo_product_id and 
+                not importing_from_woocommerce and 'regular_price' not in skip_regular_price_sync and
+                sync_direction in ['bidirectional', 'wc_to_odoo']):
+                try:
+                    # Update Odoo product price to match regular_price
+                    record.odoo_product_id.with_context(skip_wc_sync=True).write({
+                        'list_price': vals['regular_price']
+                    })
+                    _logger.info(f"Synced regular_price {vals['regular_price']} to Odoo product {record.odoo_product_id.name} list_price (sync_direction: {sync_direction})")
+                except Exception as e:
+                    _logger.error(f"Error syncing regular_price to Odoo product: {e}")
+            
+            # If regular_price changed, recalculate sale_price (from promotions or set to regular_price)
+            # Do this after the write so the new regular_price value is available
+            # Also allow recalculation when price changes from Odoo (product.template)
+            # Skip if we're already recalculating to prevent recursion
+            # IMPORTANT: If sale_price was explicitly set in vals (e.g., from list_price update), 
+            # only recalculate if allow_promotion_recalculation is True and sale_price wasn't explicitly set
+            skip_recalc = self.env.context.get('skip_promotion_recalculation', False)
+            allow_recalc = self.env.context.get('allow_promotion_recalculation', False)
+            sale_price_explicitly_set = 'sale_price' in vals
+            
+            if 'regular_price' in vals and record.odoo_product_id and (not importing_from_woocommerce or allow_recalc) and not skip_recalc:
+                # Only recalculate if sale_price wasn't explicitly set, or if we're allowing recalculation
+                if not sale_price_explicitly_set or allow_recalc:
+                    # The value is already written, so we can use it directly
+                    # Use the new price from vals (it's already in the record after write)
+                    new_regular_price = vals.get('regular_price')
+                    # Recalculate sale_price from promotions (will set to regular_price if no promotion)
+                    record._recalculate_sale_price_from_promotions(new_regular_price=new_regular_price)
+                    # Update sync fields to include sale_price if it was recalculated
+                    if 'sale_price' not in updated_fields:
+                        updated_fields.append('sale_price')
+                        sync_needed = True
+                else:
+                    # sale_price was explicitly set, keep it as is
+                    _logger.info(f"Skipping promotion recalculation for {record.name} - sale_price was explicitly set to {vals.get('sale_price')}")
+            elif 'regular_price' in vals and not skip_recalc:
+                # If no odoo_product_id, still ensure sale_price = regular_price when no promotion
+                new_regular_price = vals.get('regular_price')
+                if new_regular_price and (not record.sale_price or record.sale_price == 0):
+                    # If sale_price is not set, set it to regular_price (will be recalculated by promotion logic if needed)
+                    record.with_context(skip_promotion_recalculation=True).write({'sale_price': new_regular_price})
+            
             if sync_needed and record.connection_id and record.wc_product_id and not importing_from_woocommerce:
                 try:
                     record._sync_to_woocommerce_store()
                     
-                    if record.odoo_product_id:
-                        record._sync_to_odoo_product()
+                    # Sync other fields to Odoo if sync direction allows it
+                    if record.odoo_product_id and 'regular_price' not in vals:
+                        sync_direction = record.odoo_product_id.wc_sync_direction
+                        if sync_direction in ['bidirectional', 'wc_to_odoo']:
+                            # Only sync other fields if regular_price wasn't already synced above
+                            record._sync_to_odoo_product()
                     
                     record.write({
                         'sync_status': 'synced',
@@ -324,20 +463,20 @@ class WooCommerceProduct(models.Model):
             if self.odoo_product_id:
                 wc_data = self.odoo_product_id._prepare_woocommerce_data()
             else:
-
-
+                # Use regular_price as base price, sale_price only if set by promotions
                 status_value = self.status if self.status in ['draft', 'pending', 'private', 'publish'] else 'draft'
                 wc_data = {
                     'name': self.name or 'Untitled Product',
                     'regular_price': str(self.regular_price) if self.regular_price else '0.00',
-                    'sale_price': str(self.sale_price) if self.sale_price else '',
                     'status': status_value,
                     'sku': self.wc_sku or '',
                 }
-                
-                if not self.sale_price or self.sale_price <= 0:
-                    wc_data['sale_price'] = ''
-                    wc_data['regular_price'] = str(self.price) if self.price else str(self.regular_price)
+                # Always include sale_price (calculated from promotions or equals regular_price)
+                # Ensure sale_price is calculated before syncing
+                if not self.sale_price or self.sale_price == 0:
+                    # If sale_price is not set, set it to regular_price (no promotion)
+                    self.with_context(skip_promotion_recalculation=True).write({'sale_price': self.regular_price or 0})
+                wc_data['sale_price'] = str(self.sale_price) if self.sale_price else str(self.regular_price or 0)
             
             _logger.info(f"Syncing WooCommerce product {self.wc_product_id} with full data: {wc_data}")
         
@@ -375,53 +514,118 @@ class WooCommerceProduct(models.Model):
         wc_data = {}
         
 
-        wc_fields = ['name', 'price', 'regular_price', 'sale_price', 'status', 'wc_sku']
+        wc_fields = ['name', 'regular_price', 'sale_price', 'status', 'wc_sku']
         actual_updated_fields = [field for field in updated_fields if field in wc_fields]
         
         if not actual_updated_fields:
             _logger.warning(f"No valid WooCommerce fields in updated_fields: {updated_fields}")
             return {}
         
-
-        field_mapping = {
-            'name': 'name',
-            'price': 'regular_price',
-            'regular_price': 'regular_price', 
-            'sale_price': 'sale_price',
-            'status': 'status',
-            'wc_sku': 'sku',
-        }
-        
+        # Map fields to WooCommerce API fields
         for field in actual_updated_fields:
-            if field in field_mapping:
-                wc_field = field_mapping[field]
-                
-                if field == 'name':
-                    wc_data[wc_field] = self.name or 'Untitled Product'
-                elif field in ['price', 'regular_price']:
-                    wc_data[wc_field] = str(self.regular_price) if self.regular_price else '0.00'
-                elif field == 'sale_price':
-                    if self.sale_price and self.sale_price > 0:
-                        wc_data[wc_field] = str(self.sale_price)
-                    else:
-                        wc_data[wc_field] = ''
-                elif field == 'status':
-
-                    wc_data[wc_field] = self.status if self.status in ['draft', 'pending', 'private', 'publish'] else 'draft'
-                elif field == 'wc_sku':
-                    wc_data[wc_field] = self.wc_sku or ''
+            if field == 'name':
+                wc_data['name'] = self.name or 'Untitled Product'
+            elif field == 'regular_price':
+                wc_data['regular_price'] = str(self.regular_price) if self.regular_price else '0.00'
+            elif field == 'sale_price':
+                if self.sale_price and self.sale_price > 0:
+                    wc_data['sale_price'] = str(self.sale_price)
+                else:
+                    wc_data['sale_price'] = ''
+            elif field == 'status':
+                wc_data['status'] = self.status if self.status in ['draft', 'pending', 'private', 'publish'] else 'draft'
+            elif field == 'wc_sku':
+                wc_data['sku'] = self.wc_sku or ''
         
 
-        if 'sale_price' in actual_updated_fields or 'regular_price' in actual_updated_fields or 'price' in actual_updated_fields:
-            if self.sale_price and self.sale_price > 0:
-                wc_data['sale_price'] = str(self.sale_price)
-                wc_data['regular_price'] = str(self.regular_price) if self.regular_price else '0.00'
+        # Handle price fields: regular_price is base price, sale_price always calculated
+        if 'regular_price' in actual_updated_fields:
+            wc_data['regular_price'] = str(self.regular_price) if self.regular_price else '0.00'
+            # Always include sale_price (calculated from promotions or equals regular_price)
+            if 'sale_price' not in actual_updated_fields:
+                # Ensure sale_price is set (equals regular_price if not calculated from promotion)
+                sale_price_value = self.sale_price if (self.sale_price and self.sale_price > 0) else (self.regular_price or 0)
+                wc_data['sale_price'] = str(sale_price_value)
+        
+        if 'sale_price' in actual_updated_fields:
+            # Always send sale_price (calculated from promotions or equals regular_price)
+            if not self.sale_price or self.sale_price == 0:
+                wc_data['sale_price'] = str(self.regular_price or 0)
             else:
-                wc_data['sale_price'] = ''
-                wc_data['regular_price'] = str(self.regular_price) if self.regular_price else '0.00'
+                wc_data['sale_price'] = str(self.sale_price)
         
         _logger.info(f"Prepared partial WooCommerce data for fields {actual_updated_fields}: {wc_data}")
         return wc_data
+    
+    def _recalculate_sale_price_from_promotions(self, new_regular_price=None):
+        """Recalculate sale_price based on active promotions when regular_price changes"""
+        self.ensure_one()
+        
+        # Skip recalculation if manual sale price is being set
+        if self.env.context.get('manual_sale_price_update', False):
+            return
+        
+        # Check if product has manual sale price set
+        if self.odoo_product_id and self.odoo_product_id.wc_manual_sale_price and self.odoo_product_id.wc_manual_sale_price > 0:
+            # Manual sale price is set, don't recalculate from promotions
+            return
+        
+        if not self.odoo_product_id or not self.connection_id:
+            return
+        
+        # Use the provided new price or the current regular_price
+        product = self.odoo_product_id
+        regular_price = new_regular_price if new_regular_price is not None else (self.regular_price if self.regular_price > 0 else product.list_price)
+        
+        # Find active promotions that include this product
+        now = fields.Datetime.now()
+        active_promotions = self.env['woocommerce.promotion'].search([
+            ('connection_id', '=', self.connection_id.id),
+            ('active', '=', True),
+            ('status', '=', 'active'),
+            ('date_start', '<=', now),
+            '|',
+            ('date_end', '=', False),
+            ('date_end', '>=', now),
+        ])
+        
+        if not active_promotions:
+            # No active promotions, set sale_price = regular_price
+            if abs(self.sale_price - regular_price) > 0.01:  # Only update if different
+                self.with_context(skip_promotion_recalculation=True).write({'sale_price': regular_price})
+                _logger.info(f"No active promotions found, set sale_price = regular_price ({regular_price}) for {self.name}")
+            return
+        
+        # Check if this product is in any active promotion
+        applicable_promotion = None
+        
+        for promotion in active_promotions:
+            # Check if product is directly in promotion
+            if product.id in promotion.product_ids.ids:
+                applicable_promotion = promotion
+                break
+            
+            # Check if product category is in promotion
+            if promotion.product_category_ids and product.categ_id.id in promotion.product_category_ids.ids:
+                applicable_promotion = promotion
+                break
+        
+        if applicable_promotion:
+            # Recalculate sale_price based on promotion discount
+            if applicable_promotion.discount_type == 'percentage':
+                sale_price = regular_price * (1 - applicable_promotion.discount_value / 100)
+            else:  # fixed
+                sale_price = max(0, regular_price - applicable_promotion.discount_value)
+            
+            # Update sale_price (use context to prevent recursion)
+            if abs(self.sale_price - sale_price) > 0.01:  # Only update if different
+                self.with_context(skip_promotion_recalculation=True).write({'sale_price': sale_price})
+                _logger.info(f"Recalculated sale_price for {self.name} based on promotion {applicable_promotion.name}: {sale_price} (regular: {regular_price})")
+        else:
+            # Product not in any active promotion, set sale_price = regular_price
+            if abs(self.sale_price - regular_price) > 0.01:  # Only update if different
+                self.with_context(skip_promotion_recalculation=True).write({'sale_price': regular_price})
+                _logger.info(f"Product {self.name} not in any active promotion, set sale_price = regular_price ({regular_price})")
     
     def _sync_to_odoo_product(self):
         """Sync changes to the linked Odoo product"""
@@ -430,33 +634,37 @@ class WooCommerceProduct(models.Model):
         if not self.odoo_product_id:
             return
         
-        odoo_vals = {}
+        # Check sync direction - only sync if bidirectional or wc_to_odoo
+        sync_direction = self.odoo_product_id.wc_sync_direction
+        if sync_direction not in ['bidirectional', 'wc_to_odoo']:
+            _logger.debug(f"Skipping sync to Odoo for {self.name} - sync_direction is {sync_direction}")
+            return
         
-        if 'name' in self._context.get('updated_fields', []):
+        odoo_vals = {}
+        updated_fields = self._context.get('updated_fields', [])
+        
+        if 'name' in updated_fields:
             odoo_vals['name'] = self.name
         
-        if 'sale_price' in self._context.get('updated_fields', []):
-            if self.sale_price and self.sale_price > 0:
-                odoo_vals['list_price'] = self.sale_price
-            elif self.regular_price and self.regular_price > 0:
-                odoo_vals['list_price'] = self.regular_price
-            elif self.price and self.price > 0:
-                odoo_vals['list_price'] = self.price
+        # regular_price is synced directly in write() method, so skip it here
+        # Only sync regular_price if it wasn't already synced
+        if 'regular_price' in updated_fields and 'regular_price' not in self._context.get('skip_regular_price_sync', []):
+            odoo_vals['list_price'] = self.regular_price or 0.0
         
-        if 'wc_sku' in self._context.get('updated_fields', []):
+        if 'wc_sku' in updated_fields:
             odoo_vals['default_code'] = self.wc_sku
         
-        if 'status' in self._context.get('updated_fields', []):
+        if 'status' in updated_fields:
             odoo_vals['sale_ok'] = self.status == 'publish'
         
         if odoo_vals:
             odoo_vals['wc_auto_sync'] = False
-            self.odoo_product_id.write(odoo_vals)
+            self.odoo_product_id.with_context(skip_wc_sync=True).write(odoo_vals)
             
             self.env.cr.commit()
             self.odoo_product_id.write({'wc_auto_sync': True})
             
-            _logger.info(f"Updated Odoo product {self.odoo_product_id.name} with: {odoo_vals}")
+            _logger.info(f"Updated Odoo product {self.odoo_product_id.name} with: {odoo_vals} (sync_direction: {sync_direction})")
     
     def action_sync_to_woocommerce(self):
         """Manual action to sync to WooCommerce store"""
@@ -812,13 +1020,16 @@ class WooCommerceProduct(models.Model):
             _logger.warning(f"Failed to sync attributes for product {odoo_product.name}: {e}")
     
     def action_sync_from_woocommerce(self):
-        """Sync product data from WooCommerce"""
+        """Sync product data from WooCommerce store to Odoo"""
         self.ensure_one()
         
         try:
+            # Pull latest data from WooCommerce store
             wc_data = self.connection_id.get_product(self.wc_product_id)
             
-            self.write({
+            # Update WooCommerce product table with latest data from store
+            # Use importing_from_woocommerce context to prevent syncing back to store
+            self.with_context(importing_from_woocommerce=True).write({
                 'wc_data': str(wc_data),
                 'price': float(wc_data.get('price', 0)),
                 'regular_price': float(wc_data.get('regular_price', 0)),
@@ -834,10 +1045,24 @@ class WooCommerceProduct(models.Model):
                 'sync_error': False,
             })
             
+            # Sync to Odoo product if sync direction allows it
             if self.odoo_product_id:
-                self.odoo_product_id.write({
-                    'list_price': self.price or self.regular_price or 0,
-                })
+                sync_direction = self.odoo_product_id.wc_sync_direction
+                if sync_direction in ['bidirectional', 'wc_to_odoo']:
+                    odoo_vals = {
+                        'name': wc_data.get('name', self.odoo_product_id.name),
+                        'list_price': float(wc_data.get('regular_price', wc_data.get('price', 0)) or 0),
+                        'default_code': wc_data.get('sku', self.odoo_product_id.default_code or ''),
+                        'description': wc_data.get('description', self.odoo_product_id.description or ''),
+                        'description_sale': wc_data.get('short_description', self.odoo_product_id.description_sale or ''),
+                        'sale_ok': wc_data.get('status') == 'publish',
+                        'wc_last_sync': fields.Datetime.now(),
+                        'wc_sync_status': 'synced',
+                    }
+                    self.odoo_product_id.with_context(skip_wc_sync=True, importing_from_woocommerce=True).write(odoo_vals)
+                    _logger.info(f"Synced WooCommerce product data to Odoo product {self.odoo_product_id.name} (sync_direction: {sync_direction})")
+                else:
+                    _logger.debug(f"Skipping sync to Odoo for {self.name} - sync_direction is {sync_direction}")
             
             return {
                 'type': 'ir.actions.client',
@@ -900,28 +1125,62 @@ class WooCommerceProduct(models.Model):
     
     @api.model
     def _cron_sync_products(self):
-        """Cron job to automatically sync products from WooCommerce"""
-        _logger.info("Starting WooCommerce product sync cron job")
+        """Cron job to automatically sync products from WooCommerce store to Odoo"""
+        _logger.info("Starting WooCommerce product sync cron job (pulling from WooCommerce store)")
         
         connections = self.env['woocommerce.connection'].search([
             ('active', '=', True),
             ('connection_status', '=', 'success')
         ])
         
+        _logger.info(f"Found {len(connections)} active connections")
+        
         for connection in connections:
             try:
+                # Find products that should be synced from WooCommerce (bidirectional or wc_to_odoo)
                 products_to_sync = self.search([
                     ('connection_id', '=', connection.id),
-                    ('sync_status', 'in', ['pending', 'error'])
+                    ('odoo_product_id', '!=', False),  # Only products linked to Odoo
+                    ('wc_product_id', '!=', False),  # Only products that exist in WooCommerce
                 ])
                 
-                for product in products_to_sync:
-                    try:
-                        product.action_sync_from_woocommerce()
-                    except Exception as e:
-                        _logger.error(f"Error syncing product {product.id}: {e}")
+                _logger.info(f"Connection {connection.name}: Found {len(products_to_sync)} products linked to Odoo")
                 
-                _logger.info(f"Synced {len(products_to_sync)} products for connection {connection.name}")
+                synced_count = 0
+                error_count = 0
+                skipped_no_direction = 0
+                skipped_no_auto_sync = 0
+                
+                for product in products_to_sync:
+                    # Check sync direction - only sync if bidirectional or wc_to_odoo
+                    odoo_product = product.odoo_product_id
+                    if not odoo_product:
+                        _logger.debug(f"Product {product.name} has no linked Odoo product, skipping")
+                        continue
+                    
+                    sync_direction = odoo_product.wc_sync_direction
+                    if sync_direction not in ['bidirectional', 'wc_to_odoo']:
+                        _logger.debug(f"Product {product.name} sync_direction is {sync_direction}, skipping (needs bidirectional or wc_to_odoo)")
+                        skipped_no_direction += 1
+                        continue
+                    
+                    # Only sync if auto_sync is enabled
+                    if not odoo_product.wc_auto_sync:
+                        _logger.debug(f"Product {product.name} has wc_auto_sync=False, skipping")
+                        skipped_no_auto_sync += 1
+                        continue
+                    
+                    try:
+                        _logger.info(f"Syncing product {product.name} (ID: {product.wc_product_id}) from WooCommerce store...")
+                        # Pull latest data from WooCommerce store
+                        product.action_sync_from_woocommerce()
+                        synced_count += 1
+                        _logger.info(f"Successfully synced product {product.name} from WooCommerce")
+                    except Exception as e:
+                        _logger.error(f"Error syncing product {product.id} ({product.name}) from WooCommerce: {e}")
+                        error_count += 1
+                
+                _logger.info(f"Connection {connection.name}: Synced {synced_count} products, {error_count} errors, {skipped_no_direction} skipped (wrong direction), {skipped_no_auto_sync} skipped (auto_sync disabled)")
                 
             except Exception as e:
                 _logger.error(f"Error in WooCommerce sync cron for connection {connection.name}: {e}")

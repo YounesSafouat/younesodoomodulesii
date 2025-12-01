@@ -11,7 +11,7 @@
                     <field name="name"/>
                     <field name="wc_sku"/>
                     <field name="connection_id"/>
-                    <field name="price"/>
+                    <field name="regular_price" string="Price"/>
                     <field name="stock_status" widget="badge"
                            decoration-success="stock_status == 'instock'"
                            decoration-danger="stock_status == 'outofstock'"
@@ -89,19 +89,28 @@
                                 <field name="connection_id" 
                                        string="WooCommerce Store" 
                                        required="1"
+                                       readonly="1"
                                        placeholder="Select your WooCommerce store..."
-                                       help="Choose which WooCommerce store this product belongs to"/>
+                                       help="WooCommerce connection. This is set when the product is created and should not be changed as it could break synchronization."/>
                             </group>
                         </group>
 
+                        <div class="alert alert-warning" role="alert">
+                            <h4><i class="fa fa-lock"/> Sensitive Information</h4>
+                            <p>The <strong>WooCommerce Product ID</strong> and <strong>Connection</strong> are sensitive fields that link this product to your WooCommerce store. Changing these could break the synchronization. Only modify them if you know what you're doing.</p>
+                        </div>
+
                         <group string="Product Information">
                             <group>
-                                <field name="wc_product_id"/>
-                                <field name="wc_sku"/>
+                                <field name="wc_product_id" readonly="1"
+                                       help="WooCommerce Product ID - This is set automatically when the product is created in WooCommerce. Do not change this unless you know what you're doing."/>
+                                <field name="wc_sku"
+                                       help="Product SKU in WooCommerce"/>
                                 <field name="odoo_product_id" 
                                        string="Linked Odoo Product"
+                                       readonly="1"
                                        placeholder="Will be auto-created if left empty..."
-                                       help="Leave empty to auto-create an Odoo product, or select an existing one"/>
+                                       help="The linked Odoo product. This is set automatically and should not be changed manually."/>
                             </group>
                             <group>
                                 <field name="stock_status"/>
@@ -110,16 +119,26 @@
                             </group>
                         </group>
 
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-dollar-sign"/> Pricing Information</h4>
+                            <p><strong>Price:</strong> This is the regular/base price of the product. It syncs bidirectionally with the Inventory module's price field.</p>
+                            <p><strong>Sale Price:</strong> This is automatically calculated from active promotions. If no promotion is active, it equals the regular price. You cannot edit this field directly - it's managed by the Promotions feature.</p>
+                            <p><strong>How Promotions Work:</strong> When you create a promotion and apply it to this product, the sale price is automatically calculated based on the promotion discount. When the promotion ends, the sale price returns to match the regular price.</p>
+                        </div>
+
                         <group string="Pricing">
                             <group>
-                                <field name="price"/>
-                                <field name="regular_price"/>
-                                <field name="sale_price"/>
+                                <field name="regular_price" string="Price" 
+                                       help="Product price. This syncs with Inventory price."/>
+                                <field name="sale_price" string="Sale Price" readonly="1"
+                                       help="Sale price calculated from active promotions. If no promotion is active, it equals the regular price. This field is automatically calculated and cannot be edited."/>
                             </group>
                             <group>
-                                <field name="last_sync" readonly="1"/>
+                                <field name="last_sync" readonly="1"
+                                       help="Last time this product was synchronized with WooCommerce"/>
                                 <field name="sync_error" readonly="1" 
-                                       invisible="not sync_error"/>
+                                       invisible="not sync_error"
+                                       help="Error message from the last synchronization attempt"/>
                             </group>
                         </group>
 

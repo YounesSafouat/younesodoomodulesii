@@ -26,3 +26,7 @@ access_woocommerce_order_webhook_log_manager,woocommerce.order.webhook.log.manag
 access_res_config_settings_woocommerce,res.config.settings.woocommerce,model_res_config_settings,base.group_system,1,1,1,1
 access_woocommerce_variant_mapping_user,woocommerce.variant.mapping.user,model_woocommerce_variant_mapping,base.group_user,1,1,1,0
 access_woocommerce_variant_mapping_manager,woocommerce.variant.mapping.manager,model_woocommerce_variant_mapping,base.group_system,1,1,1,1
+access_woocommerce_coupon_user,woocommerce.coupon.user,model_woocommerce_coupon,base.group_user,1,1,1,0
+access_woocommerce_coupon_manager,woocommerce.coupon.manager,model_woocommerce_coupon,base.group_system,1,1,1,1
+access_woocommerce_promotion_user,woocommerce.promotion.user,model_woocommerce_promotion,base.group_user,1,1,1,0
+access_woocommerce_promotion_manager,woocommerce.promotion.manager,model_woocommerce_promotion,base.group_system,1,1,1,1

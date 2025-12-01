@@ -52,10 +52,15 @@ class ProductTemplate(models.Model):
     def _compute_wc_sync_direction(self):
         """Compute sync direction from connection default"""
         for product in self:
-            if product.wc_connection_id and product.wc_connection_id.default_sync_direction:
-                product.wc_sync_direction = product.wc_connection_id.default_sync_direction
+            if product.wc_connection_id:
+                if product.wc_connection_id.default_sync_direction:
+                    product.wc_sync_direction = product.wc_connection_id.default_sync_direction
+                else:
+                    product.wc_sync_direction = 'bidirectional'  # Default if connection has no default
             else:
-                product.wc_sync_direction = 'bidirectional'
+                # If no connection, keep existing direction or default to bidirectional
+                if not product.wc_sync_direction:
+                    product.wc_sync_direction = 'bidirectional'
     
     wc_auto_sync = fields.Boolean(
         string='Auto Sync on Changes',
@@ -81,6 +86,18 @@ class ProductTemplate(models.Model):
         help='Direct link to the product in WooCommerce store'
     )
     
+    wc_sale_price = fields.Float(
+        string='WooCommerce Sale Price',
+        compute='_compute_wc_sale_price',
+        readonly=True,
+        help='Sale price in WooCommerce (calculated from active promotions). If no promotion is active, it equals the regular price.'
+    )
+    
+    wc_manual_sale_price = fields.Float(
+        string='Manual Sale Price',
+        help='Manually set sale price for WooCommerce. When set, this will override any active promotions and disable them for this product. Leave empty to use automatic promotion pricing.'
+    )
+    
     @api.depends('wc_product_id', 'wc_connection_id')
     def _compute_wc_product_url(self):
         """Compute the WooCommerce product URL"""
@@ -95,9 +112,40 @@ class ProductTemplate(models.Model):
             else:
                 product.wc_product_url = False
     
+    @api.depends('wc_product_id', 'wc_connection_id')
+    def _compute_wc_sale_price(self):
+        """Compute the WooCommerce sale price from the linked woocommerce.product"""
+        for product in self:
+            if product.wc_product_id and product.wc_connection_id:
+                wc_product = self.env['woocommerce.product'].search([
+                    ('wc_product_id', '=', product.wc_product_id),
+                    ('connection_id', '=', product.wc_connection_id.id)
+                ], limit=1)
+                if wc_product:
+                    product.wc_sale_price = wc_product.sale_price if wc_product.sale_price else (wc_product.regular_price if wc_product.regular_price else product.list_price)
+                else:
+                    product.wc_sale_price = product.list_price  # Default to list_price if no WooCommerce product found
+            else:
+                product.wc_sale_price = product.list_price  # Default to list_price if not linked to WooCommerce
+    
     @api.model_create_multi
     def create(self, vals_list):
         """Override create to handle WooCommerce sync"""
+        # Auto-enable sync and set sync direction when connection is set during create
+        for vals in vals_list:
+            if vals.get('wc_connection_id'):
+                # Auto-enable sync if not explicitly set
+                if 'wc_sync_enabled' not in vals:
+                    vals['wc_sync_enabled'] = True
+                
+                # Set sync direction from connection if not explicitly set
+                if 'wc_sync_direction' not in vals:
+                    connection = self.env['woocommerce.connection'].browse(vals['wc_connection_id'])
+                    if connection and connection.default_sync_direction:
+                        vals['wc_sync_direction'] = connection.default_sync_direction
+                    else:
+                        vals['wc_sync_direction'] = 'bidirectional'  # Default fallback
+        
         products = super(ProductTemplate, self).create(vals_list)
         
         for product, vals in zip(products, vals_list):
@@ -137,15 +185,166 @@ class ProductTemplate(models.Model):
         
         return products
     
+    def _disable_promotions_for_product(self, product, manual_sale_price):
+        """Disable active promotions for a product when manual sale price is set"""
+        if not product.wc_connection_id:
+            return self.env['woocommerce.promotion']
+        
+        # Find active promotions that include this product
+        now = fields.Datetime.now()
+        active_promotions = self.env['woocommerce.promotion'].search([
+            ('connection_id', '=', product.wc_connection_id.id),
+            ('active', '=', True),
+            ('status', 'in', ['active', 'scheduled']),
+        ])
+        
+        promotions_to_disable = self.env['woocommerce.promotion']
+        
+        for promotion in active_promotions:
+            # Check if product is directly in promotion
+            if product.id in promotion.product_ids.ids:
+                promotions_to_disable |= promotion
+            # Check if product category is in promotion
+            elif promotion.product_category_ids and product.categ_id.id in promotion.product_category_ids.ids:
+                promotions_to_disable |= promotion
+        
+        # Disable the promotions
+        if promotions_to_disable:
+            promotions_to_disable.write({'active': False})
+            _logger.info(f"Disabled {len(promotions_to_disable)} promotion(s) for product {product.name} due to manual sale price")
+        
+        return promotions_to_disable
+    
+    def _update_woocommerce_sale_price(self, sale_price):
+        """Update WooCommerce sale price directly"""
+        self.ensure_one()
+        
+        if not self.wc_product_id or not self.wc_connection_id:
+            return
+        
+        wc_product = self.env['woocommerce.product'].search([
+            ('wc_product_id', '=', self.wc_product_id),
+            ('connection_id', '=', self.wc_connection_id.id)
+        ], limit=1)
+        
+        if wc_product:
+            # Update sale price and sync to WooCommerce
+            wc_product.with_context(
+                skip_promotion_recalculation=True,
+                manual_sale_price_update=True
+            ).write({'sale_price': sale_price})
+            
+            # Sync to WooCommerce store
+            try:
+                wc_product._sync_to_woocommerce_store()
+                _logger.info(f"Updated WooCommerce sale price to {sale_price} for product {self.name}")
+            except Exception as e:
+                _logger.error(f"Error syncing sale price to WooCommerce for product {self.name}: {e}")
+                raise
+    
+    def _clear_manual_sale_price(self):
+        """Clear manual sale price and recalculate from promotions"""
+        self.ensure_one()
+        
+        if not self.wc_product_id or not self.wc_connection_id:
+            return
+        
+        wc_product = self.env['woocommerce.product'].search([
+            ('wc_product_id', '=', self.wc_product_id),
+            ('connection_id', '=', self.wc_connection_id.id)
+        ], limit=1)
+        
+        if wc_product:
+            # Recalculate sale price from promotions
+            wc_product._recalculate_sale_price_from_promotions()
+            
+            # Sync to WooCommerce store
+            try:
+                wc_product._sync_to_woocommerce_store()
+                _logger.info(f"Cleared manual sale price and recalculated from promotions for product {self.name}")
+            except Exception as e:
+                _logger.error(f"Error syncing after clearing manual sale price for product {self.name}: {e}")
+    
     def write(self, vals):
         """Override write to handle WooCommerce sync"""
         sync_fields = ['name', 'list_price', 'default_code', 'description', 'description_sale', 'sale_ok', 'purchase_ok']
         image_fields = ['image_1920', 'image_1024', 'image_512', 'image_256', 'image_128']
         
+        # Protect wc_connection_id from being changed if product is already synced
+        if 'wc_connection_id' in vals:
+            for product in self:
+                if product.wc_connection_id and product.wc_connection_id.id != vals.get('wc_connection_id'):
+                    if product.wc_product_id or product.wc_sync_status in ['synced', 'pending_update']:
+                        raise UserError(_('Cannot change WooCommerce connection. This product is already linked to a WooCommerce store. Changing the connection could break synchronization. Please unlink the product first if you need to change the connection.'))
+        
+        # Handle manual sale price update - disable promotions and sync to WooCommerce
+        manual_sale_price_updated = False
+        disabled_promotions_list = []
+        manual_sale_price_value = None
+        
+        if 'wc_manual_sale_price' in vals:
+            manual_sale_price = vals.get('wc_manual_sale_price')
+            manual_sale_price_value = manual_sale_price
+            for product in self:
+                if product.wc_sync_enabled and product.wc_connection_id and product.wc_product_id:
+                    # Find and disable active promotions for this product
+                    disabled_promotions = self._disable_promotions_for_product(product, manual_sale_price)
+                    if disabled_promotions:
+                        disabled_promotions_list.extend(disabled_promotions)
+                    
+                    # Update WooCommerce sale price
+                    if manual_sale_price and manual_sale_price > 0:
+                        product._update_woocommerce_sale_price(manual_sale_price)
+                        manual_sale_price_updated = True
+                    elif not manual_sale_price or manual_sale_price == 0:
+                        # Clear manual sale price - recalculate from promotions
+                        product._clear_manual_sale_price()
+                        manual_sale_price_updated = True
+        
+        # Auto-enable sync when connection is set (if not already enabled and not explicitly set to False)
+        if 'wc_connection_id' in vals and vals.get('wc_connection_id') and 'wc_sync_enabled' not in vals:
+            # Enable sync for products that don't have it enabled yet
+            # We'll update them individually after the write
+            products_to_enable_sync = []
+        
         result = super(ProductTemplate, self).write(vals)
+        
+        # After write, enable sync and set sync direction for products that got a connection
+        if 'wc_connection_id' in vals and vals.get('wc_connection_id'):
+            connection = self.env['woocommerce.connection'].browse(vals['wc_connection_id'])
+            products_to_update = self.filtered(lambda p: p.wc_connection_id)
+            
+            if connection:
+                update_vals = {}
+                
+                # Auto-enable sync if not already enabled (unless explicitly set to False)
+                if 'wc_sync_enabled' not in vals:
+                    products_to_enable = products_to_update.filtered(lambda p: not p.wc_sync_enabled)
+                    if products_to_enable:
+                        update_vals['wc_sync_enabled'] = True
+                
+                # Set sync direction from connection's default_sync_direction
+                # The compute method should handle this, but we'll set it explicitly to ensure it's correct
+                if connection.default_sync_direction:
+                    # Check which products need their direction updated
+                    products_needing_direction = products_to_update.filtered(
+                        lambda p: not p.wc_sync_direction or p.wc_sync_direction != connection.default_sync_direction
+                    )
+                    if products_needing_direction:
+                        update_vals['wc_sync_direction'] = connection.default_sync_direction
+                
+                if update_vals:
+                    products_to_update.write(update_vals)
+                    _logger.info(f"Auto-enabled WooCommerce sync and set direction to '{connection.default_sync_direction}' for {len(products_to_update)} product(s) from connection {connection.name}")
         
         for product in self:
             if product.wc_sync_enabled and product.wc_connection_id and product.wc_auto_sync:
+                # Check sync direction - only sync to WooCommerce if bidirectional or odoo_to_wc
+                sync_direction = product.wc_sync_direction
+                if sync_direction not in ['bidirectional', 'odoo_to_wc']:
+                    _logger.debug(f"Skipping sync to WooCommerce for {product.name} - sync_direction is {sync_direction}")
+                    continue
+                
                 should_sync = False
                 mapped_fields = []
                 
@@ -184,6 +383,35 @@ class ProductTemplate(models.Model):
 
                     updated_fields = [key for key in vals.keys() if key in sync_fields + mapped_fields]
                     product.with_context(updated_fields=updated_fields)._queue_woocommerce_sync()
+        
+        # Show notification for manual sale price update
+        if manual_sale_price_updated and manual_sale_price_value and manual_sale_price_value > 0:
+            # Get unique promotions
+            unique_promotions = list(set(disabled_promotions_list))
+            promotion_names = ', '.join([p.name for p in unique_promotions[:5]])  # Limit to first 5
+            if len(unique_promotions) > 5:
+                promotion_names += _(' and %d more') % (len(unique_promotions) - 5)
+            
+            message = _('Manual sale price set to %s.') % manual_sale_price_value
+            if unique_promotions:
+                message += _(' %d promotion(s) disabled: %s') % (len(unique_promotions), promotion_names)
+            else:
+                message += _(' No active promotions found for this product.')
+            
+            # Post to chatter if available
+            for product in self:
+                if product.wc_sync_enabled and product.wc_connection_id:
+                    try:
+                        # Try to use message_post (requires mail.thread)
+                        product.with_context(mail_create_nosubscribe=True).message_post(
+                            body=message,
+                            subject=_('WooCommerce Sale Price Updated'),
+                            message_type='notification',
+                        )
+                    except Exception as e:
+                        _logger.warning(f"Could not post message to chatter: {e}")
+                    
+                    _logger.info(f"Manual sale price updated for {product.name}: {message}")
         
         return result
     
@@ -239,7 +467,21 @@ class ProductTemplate(models.Model):
                     ('connection_id', '=', self.wc_connection_id.id)
                 ])
                 if wc_product:
-                    wc_product.with_context(updated_fields=updated_fields)._sync_to_woocommerce_store()
+                    # Map Odoo fields to WooCommerce fields
+                    wc_updated_fields = []
+                    field_mapping = {
+                        'list_price': 'regular_price',
+                        'default_code': 'wc_sku',
+                        'name': 'name',
+                        'sale_ok': 'status',
+                    }
+                    for field in updated_fields:
+                        if field in field_mapping:
+                            wc_updated_fields.append(field_mapping[field])
+                        elif field in ['description', 'description_sale']:
+                            wc_updated_fields.append('wc_data')
+                    
+                    wc_product.with_context(updated_fields=wc_updated_fields if wc_updated_fields else updated_fields)._sync_to_woocommerce_store()
                     return
             
 
@@ -366,27 +608,48 @@ class ProductTemplate(models.Model):
         images_to_sync = []
         
 
+        # First, ensure the inventory image (image_1920) is set as main image in WooCommerce product images
+        # This ensures that whenever we sync, the inventory image is always the main image
         if self.wc_image_sync_enabled and self.image_1920:
-            _logger.info(f"Processing main product image for {self.name}")
+            wc_product = self.env['woocommerce.product'].search([
+                ('odoo_product_id', '=', self.id),
+                ('connection_id', '=', self.wc_connection_id.id)
+            ], limit=1)
             
-
-            if self.wc_connection_id.image_upload_method == 'wordpress_media':
-
-
-                _logger.info(f"WordPress Media Library method requires individual image sync first")
-            else:
-                image_data = self._process_product_image()
-                if image_data:
-                    images_to_sync.append({
-                        'src': image_data,
-                        'name': self.name or 'Product Image',
-                        'alt': self.name or ''
+            if wc_product:
+                # Unset ALL existing main images first
+                existing_main_images = wc_product.product_image_ids.filtered(lambda img: img.is_main_image)
+                if existing_main_images:
+                    existing_main_images.with_context(skip_wc_sync=True).write({'is_main_image': False})
+                
+                # Find or create the main image from inventory
+                inventory_main_image = wc_product.product_image_ids.filtered(
+                    lambda img: img.name and 'Main Image' in img.name
+                )
+                
+                if inventory_main_image:
+                    # Update existing main image record
+                    inventory_main_image = inventory_main_image[0]
+                    inventory_main_image.with_context(skip_wc_sync=True).write({
+                        'image_1920': self.image_1920,
+                        'is_main_image': True,
+                        'sequence': 0,  # Main image should be first (sequence 0)
+                        'sync_status': 'pending',
                     })
-                    _logger.info(f"Added main product image to WooCommerce data for product {self.name}")
+                    _logger.info(f"Updated main image from inventory for product {self.name}")
                 else:
-                    _logger.warning(f"Failed to process main product image for product {self.name}")
+                    # Create new main image from inventory
+                    inventory_main_image = self.env['woocommerce.product.image'].with_context(skip_wc_sync=True).create({
+                        'product_id': wc_product.id,
+                        'image_1920': self.image_1920,
+                        'name': f"{self.name} - Main Image",
+                        'is_main_image': True,
+                        'sequence': 0,  # Main image should be first (sequence 0)
+                        'sync_status': 'pending',
+                    })
+                    _logger.info(f"Created main image from inventory for product {self.name}")
         
-
+        # Now build the images array for WooCommerce API
         if self.wc_image_sync_enabled:
             wc_product = self.env['woocommerce.product'].search([
                 ('odoo_product_id', '=', self.id),
@@ -394,33 +657,45 @@ class ProductTemplate(models.Model):
             ], limit=1)
             
             if wc_product and wc_product.product_image_ids:
-                _logger.info(f"Found {len(wc_product.product_image_ids)} WooCommerce product images for {self.name}")
-                for wc_image in wc_product.product_image_ids:
+                # Sort images: main image first (sequence 0), then others by sequence
+                sorted_images = wc_product.product_image_ids.sorted(lambda img: (0 if img.is_main_image else 1, img.sequence))
+                _logger.info(f"Found {len(sorted_images)} WooCommerce product images for {self.name}, main image: {sorted_images[0].name if sorted_images else 'None'}")
 
+                for wc_image in sorted_images:
                     if self.wc_connection_id.image_upload_method == 'wordpress_media':
-
+                        # WordPress Media Library method
                         if wc_image.sync_status == 'synced' and wc_image.wc_image_id and wc_image.wc_image_url:
-                            _logger.info(f"Using WordPress Media Library image: {wc_image.name} (ID: {wc_image.wc_image_id})")
-                            images_to_sync.append({
+                            _logger.info(f"Using WordPress Media Library image: {wc_image.name} (ID: {wc_image.wc_image_id}, Main: {wc_image.is_main_image})")
+                            image_data = {
                                 'id': wc_image.wc_image_id,
                                 'src': wc_image.wc_image_url,
                                 'name': wc_image.name or 'Product Image',
                                 'alt': wc_image.alt_text or wc_image.name or ''
-                            })
+                            }
+                            # Main image should be first in the array
+                            if wc_image.is_main_image:
+                                images_to_sync.insert(0, image_data)
+                            else:
+                                images_to_sync.append(image_data)
                             _logger.info(f"Added WordPress Media Library image to sync data: {wc_image.name}")
                         elif wc_image.image_1920 and wc_image.sync_status != 'synced':
                             _logger.info(f"Image {wc_image.name} needs to be synced to WordPress Media Library first")
                     else:
-
+                        # Base64 method
                         if wc_image.image_1920:
-                            _logger.info(f"Processing WooCommerce product image: {wc_image.name}")
-                            image_data = self._process_woocommerce_product_image(wc_image)
-                            if image_data:
-                                images_to_sync.append({
-                                    'src': image_data,
+                            _logger.info(f"Processing WooCommerce product image: {wc_image.name} (Main: {wc_image.is_main_image})")
+                            image_data_processed = self._process_woocommerce_product_image(wc_image)
+                            if image_data_processed:
+                                image_data = {
+                                    'src': image_data_processed,
                                     'name': wc_image.name or 'Product Image',
                                     'alt': wc_image.alt_text or wc_image.name or ''
-                                })
+                                }
+                                # Main image should be first in the array
+                                if wc_image.is_main_image:
+                                    images_to_sync.insert(0, image_data)
+                                else:
+                                    images_to_sync.append(image_data)
                                 _logger.info(f"Added WooCommerce product image to sync data: {wc_image.name}")
                             else:
                                 _logger.warning(f"Failed to process WooCommerce product image: {wc_image.name}")
@@ -634,13 +909,21 @@ class ProductTemplate(models.Model):
             wc_update_vals['name'] = vals['name']
         
         if 'list_price' in vals:
-            wc_update_vals['sale_price'] = float(vals['list_price'])
+            # Sync list_price to regular_price (base price before promotion)
+            new_list_price = float(vals['list_price'])
+            wc_update_vals['regular_price'] = new_list_price
             
-            if wc_product.regular_price and wc_product.regular_price > 0:
-                wc_update_vals['price'] = float(vals['list_price'])
+            # When list_price is updated in Inventory, also update sale_price in WooCommerce
+            # Priority: 1) Manual sale price (if set), 2) Recalculate from promotions, 3) Same as list_price
+            if self.wc_manual_sale_price and self.wc_manual_sale_price > 0:
+                # Manual sale price is set - keep it
+                wc_update_vals['sale_price'] = self.wc_manual_sale_price
+                _logger.info(f"Keeping manual sale price {self.wc_manual_sale_price} for product {self.name} after list_price update to {new_list_price}")
             else:
-                wc_update_vals['regular_price'] = float(vals['list_price'])
-                wc_update_vals['price'] = float(vals['list_price'])
+                # No manual sale price - set sale_price to list_price initially
+                # It will be recalculated from promotions if any exist (in woocommerce.product.write())
+                wc_update_vals['sale_price'] = new_list_price
+                _logger.info(f"Setting sale_price to list_price {new_list_price} for product {self.name}, will be recalculated from promotions if any exist")
         
         if 'default_code' in vals:
             wc_update_vals['wc_sku'] = vals['default_code']
@@ -661,8 +944,46 @@ class ProductTemplate(models.Model):
 
             updated_fields = list(wc_update_vals.keys())
             _logger.info(f"Product template updating WooCommerce product with fields: {updated_fields}")
-            wc_product = wc_product.with_context(updated_fields=updated_fields)
+            
+            # Determine if we should recalculate promotions
+            # Only recalculate if there's no manual sale price set
+            has_manual_sale_price = self.wc_manual_sale_price and self.wc_manual_sale_price > 0
+            should_recalculate_promotions = not has_manual_sale_price
+            
+            # If sale_price is in the update, make sure it's included in updated_fields for sync
+            if 'sale_price' in wc_update_vals and 'sale_price' not in updated_fields:
+                updated_fields.append('sale_price')
+            
+            # Skip syncing back to Odoo product to prevent loops
+            # IMPORTANT: Don't set importing_from_woocommerce=True, so the write method will sync to WooCommerce store
+            wc_product = wc_product.with_context(
+                updated_fields=updated_fields,
+                skip_regular_price_sync=['regular_price'] if 'regular_price' in updated_fields else [],
+                allow_promotion_recalculation=should_recalculate_promotions,  # Allow recalculation only if no manual sale price
+                skip_promotion_recalculation=has_manual_sale_price,  # Skip if manual sale price is set
+                from_odoo_product=True  # Flag to indicate this update is from Odoo product
+            )
             wc_product.write(wc_update_vals)
+            
+            _logger.info(f"Updated WooCommerce product table for {self.name}: regular_price={wc_update_vals.get('regular_price')}, sale_price={wc_update_vals.get('sale_price')}, recalculate_promotions={should_recalculate_promotions}")
+            
+            # Force sync to WooCommerce store after updating the table
+            # The write method should handle this, but let's ensure it happens
+            if wc_product.connection_id and wc_product.wc_product_id:
+                try:
+                    wc_product._sync_to_woocommerce_store()
+                    wc_product.write({
+                        'sync_status': 'synced',
+                        'last_sync': fields.Datetime.now(),
+                        'sync_error': False,
+                    })
+                    _logger.info(f"Synced WooCommerce product {wc_product.name} to WooCommerce store after Odoo update")
+                except Exception as e:
+                    _logger.error(f"Error syncing WooCommerce product {wc_product.name} to store: {e}")
+                    wc_product.write({
+                        'sync_status': 'error',
+                        'sync_error': str(e),
+                    })
             
             _logger.info(f"Updated WooCommerce product table for {self.name}: {wc_update_vals}")
     
@@ -783,12 +1104,11 @@ class ProductTemplate(models.Model):
         return 1
     
     def _process_product_image_for_sync(self, product):
-        """Process product image when it changes - create/update WooCommerce product image"""
+        """Process product image when it changes - ensure inventory image is always the main image in WooCommerce"""
         if not product.image_1920 or not product.wc_product_id or not product.wc_connection_id:
             return
         
         try:
-
             wc_product = self.env['woocommerce.product'].search([
                 ('wc_product_id', '=', product.wc_product_id),
                 ('connection_id', '=', product.wc_connection_id.id)
@@ -798,28 +1118,54 @@ class ProductTemplate(models.Model):
                 _logger.warning(f"WooCommerce product record not found for {product.name}")
                 return
             
-
-            main_image = wc_product.product_image_ids.filtered(lambda img: img.is_main_image)
+            # Unset ALL existing main images first
+            existing_main_images = wc_product.product_image_ids.filtered(lambda img: img.is_main_image)
+            if existing_main_images:
+                existing_main_images.with_context(skip_wc_sync=True).write({'is_main_image': False})
             
-            if main_image:
-
-                main_image = main_image[0]
-                main_image.with_context(skip_wc_sync=True).write({
+            # Find or create the main image from inventory
+            # First, check if there's already an image with the same data (to avoid duplicates)
+            inventory_main_image = wc_product.product_image_ids.filtered(
+                lambda img: img.name and 'Main Image' in img.name
+            )
+            
+            if inventory_main_image:
+                # Update existing main image record
+                inventory_main_image = inventory_main_image[0]
+                inventory_main_image.with_context(skip_wc_sync=True).write({
                     'image_1920': product.image_1920,
+                    'is_main_image': True,
+                    'sequence': 0,  # Main image should be first
                     'sync_status': 'pending',
                 })
-                _logger.info(f"Updated existing main image for product {product.name}")
+                _logger.info(f"Updated main image from inventory for product {product.name}")
             else:
-
-                self.env['woocommerce.product.image'].with_context(skip_wc_sync=True).create({
+                # Create new main image from inventory
+                inventory_main_image = self.env['woocommerce.product.image'].with_context(skip_wc_sync=True).create({
                     'product_id': wc_product.id,
                     'image_1920': product.image_1920,
                     'name': f"{product.name} - Main Image",
                     'is_main_image': True,
-                    'sequence': 0,
+                    'sequence': 0,  # Main image should be first
                     'sync_status': 'pending',
                 })
-                _logger.info(f"Created new main image record for product {product.name}")
+                _logger.info(f"Created main image from inventory for product {product.name}")
+            
+            # Ensure it's marked as main and sync it
+            if inventory_main_image:
+                # Make sure it's the only main image
+                other_images = wc_product.product_image_ids - inventory_main_image
+                if other_images:
+                    other_images.filtered(lambda img: img.is_main_image).with_context(skip_wc_sync=True).write({'is_main_image': False})
+                
+                # Sync the main image to WooCommerce if pending
+                if inventory_main_image.sync_status == 'pending':
+                    try:
+                        inventory_main_image.action_sync_to_woocommerce()
+                        _logger.info(f"Synced main image to WooCommerce for product {product.name}")
+                    except Exception as e:
+                        _logger.error(f"Error syncing main image to WooCommerce: {e}")
+                    
         except Exception as e:
             _logger.error(f"Error processing product image for sync: {e}")
     
@@ -941,7 +1287,7 @@ class ProductTemplate(models.Model):
         }
     
     def action_view_woocommerce_images(self):
-        """View WooCommerce product images"""
+        """Redirect to WooCommerce product form view"""
         self.ensure_one()
         
         if not self.wc_product_id or not self.wc_connection_id:
@@ -955,15 +1301,20 @@ class ProductTemplate(models.Model):
         if not wc_product:
             raise ValidationError(_('WooCommerce product record not found.'))
         
+        # Get the form view ID
+        form_view = self.env.ref('woocommerce_integration.view_woocommerce_product_form')
+        
         return {
             'type': 'ir.actions.act_window',
-            'name': _('WooCommerce Images - %s') % self.name,
-            'res_model': 'woocommerce.product.image',
-            'view_mode': 'list,form',
-            'domain': [('product_id', '=', wc_product.id)],
+            'name': _('WooCommerce Product - %s') % wc_product.name,
+            'res_model': 'woocommerce.product',
+            'res_id': wc_product.id,
+            'view_mode': 'form',
+            'view_id': form_view.id,
+            'target': 'current',
             'context': {
                 'default_product_id': wc_product.id,
-                'default_name': self.name,
+                'default_name': wc_product.name,
+                'active_id': wc_product.id,
             },
-            'target': 'current',
         }

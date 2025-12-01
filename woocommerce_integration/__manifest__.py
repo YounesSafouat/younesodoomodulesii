@@ -27,6 +27,7 @@ Features:
     'images': ['static/description/logo.svg'],
     'depends': [
         'base',
+        'mail',
         'product',
         'sale',
         'stock',
@@ -46,8 +47,10 @@ Features:
         'views/woocommerce_conflict_resolution_wizard_views.xml',
         'views/woocommerce_field_mapping_views.xml',
         'views/product_template_views.xml',
-        'views/menu.xml',
+        'views/woocommerce_coupon_views.xml',
+        'views/woocommerce_promotion_views.xml',
         'views/woocommerce_order_webhook_views.xml',
+        'views/menu.xml',
     ],
     'demo': [],
     'test': [

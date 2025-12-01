@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Coupon Tree View -->
+        <record id="view_woocommerce_coupon_tree" model="ir.ui.view">
+            <field name="name">woocommerce.coupon.tree</field>
+            <field name="model">woocommerce.coupon</field>
+            <field name="arch" type="xml">
+                <list string="WooCommerce Coupons" decoration-muted="active == False">
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="connection_id"/>
+                    <field name="discount_type"/>
+                    <field name="amount"/>
+                    <field name="usage_count"/>
+                    <field name="usage_limit"/>
+                    <field name="date_expires"/>
+                    <field name="sync_status"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+        
+        <!-- Coupon Form View -->
+        <record id="view_woocommerce_coupon_form" model="ir.ui.view">
+            <field name="name">woocommerce.coupon.form</field>
+            <field name="model">woocommerce.coupon</field>
+            <field name="arch" type="xml">
+                <form string="WooCommerce Coupon">
+                    <header>
+                        <button name="action_sync_to_woocommerce" string="Sync to WooCommerce" type="object" 
+                                class="btn-primary" icon="fa-sync" 
+                                invisible="sync_status == 'synced'"/>
+                        <button name="action_sync_from_woocommerce" string="Sync from WooCommerce" type="object" 
+                                class="btn-secondary" icon="fa-download"
+                                invisible="not wc_coupon_id"/>
+                        <button name="action_delete_from_woocommerce" string="Delete from WooCommerce" type="object" 
+                                class="btn-danger" icon="fa-trash"
+                                invisible="not wc_coupon_id"/>
+                        <field name="sync_status" widget="statusbar" statusbar_visible="synced,error"/>
+                    </header>
+                    <sheet>
+                        <div class="alert alert-info" role="alert">
+                            <h4><i class="fa fa-ticket"/> WooCommerce Coupons</h4>
+                            <p><strong>What are Coupons?</strong></p>
+                            <p>Coupons are discount codes that customers can enter at checkout to get discounts on their orders. They are different from Promotions, which automatically apply discounts to products.</p>
+                            <p><strong>How to use:</strong></p>
+                            <ol>
+                                <li>Create a coupon with a unique code (e.g., "SUMMER2024")</li>
+                                <li>Set the discount type (percentage or fixed amount)</li>
+                                <li>Configure usage limits and restrictions</li>
+                                <li>Click "Sync to WooCommerce" to make it available in your store</li>
+                                <li>Share the coupon code with your customers</li>
+                            </ol>
+                            <p><strong>Difference from Promotions:</strong> Coupons require customers to enter a code. Promotions automatically apply discounts to products without requiring a code.</p>
+                        </div>
+
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_sync_to_woocommerce" type="object" class="oe_stat_button" icon="fa-sync" 
+                                    invisible="sync_status == 'synced'">
+                                <field name="sync_status" widget="statinfo" string="Sync Status"/>
+                            </button>
+                        </div>
+                        
+                        <div class="alert alert-warning" role="alert">
+                            <h4><i class="fa fa-lock"/> Sensitive Information</h4>
+                            <p>The <strong>WooCommerce Coupon ID</strong> and <strong>Connection</strong> are sensitive fields that link this coupon to your WooCommerce store. Changing these could break the synchronization.</p>
+                        </div>
+
+                        <group>
+                            <group>
+                                <field name="name" required="1"/>
+                                <field name="code" required="1" placeholder="e.g., SUMMER2024"
+                                       help="Coupon code that customers will enter at checkout. Once synced to WooCommerce, changing this could cause issues."/>
+                                <field name="connection_id" required="1" options="{'no_create': True}" readonly="1"
+                                       help="WooCommerce connection. This is set when the coupon is created and should not be changed."/>
+                                <field name="wc_coupon_id" readonly="1"
+                                       help="WooCommerce Coupon ID - This is set automatically when the coupon is synced to WooCommerce. Do not change this."/>
+                            </group>
+                            <group>
+                                <field name="discount_type" required="1"/>
+                                <field name="amount" required="1"/>
+                                <field name="date_expires"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Discount Settings" name="discount_settings">
+                                <group>
+                                    <group string="Description">
+                                        <field name="description" placeholder="Coupon description visible to customers" nolabel="1"/>
+                                    </group>
+                                    <group string="Usage Limits">
+                                        <field name="usage_limit" help="Maximum number of times this coupon can be used (0 = unlimited)"/>
+                                        <field name="usage_limit_per_user" help="Maximum number of times per customer (0 = unlimited)"/>
+                                        <field name="limit_usage_to_x_items" help="Limit to X number of items in cart (0 = unlimited)"/>
+                                        <field name="usage_count" readonly="1"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <group string="Restrictions">
+                                        <field name="individual_use" help="This coupon cannot be used with other coupons"/>
+                                        <field name="free_shipping" help="Allow free shipping when this coupon is applied"/>
+                                        <field name="exclude_sale_items" help="Exclude items on sale from this coupon"/>
+                                    </group>
+                                    <group string="Amount Restrictions">
+                                        <field name="minimum_amount" help="Minimum order amount required"/>
+                                        <field name="maximum_amount" help="Maximum order amount this coupon can be applied to"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Product Restrictions" name="product_restrictions">
+                                <group>
+                                    <group string="Included Products">
+                                        <field name="product_ids" widget="many2many_tags" 
+                                               domain="[('wc_connection_id', '=', connection_id)]"
+                                               help="Products that this coupon can be applied to (leave empty for all products)"/>
+                                    </group>
+                                    <group string="Excluded Products">
+                                        <field name="excluded_product_ids" widget="many2many_tags"
+                                               domain="[('wc_connection_id', '=', connection_id)]"
+                                               help="Products that this coupon cannot be applied to"/>
+                                    </group>
+                                </group>
+                                <group>
+                                    <group string="Included Categories">
+                                        <field name="product_category_ids" widget="many2many_tags"
+                                               help="Product categories that this coupon can be applied to"/>
+                                    </group>
+                                    <group string="Excluded Categories">
+                                        <field name="excluded_product_category_ids" widget="many2many_tags"
+                                               help="Product categories that this coupon cannot be applied to"/>
+                                    </group>
+                                </group>
+                            </page>
+                            
+                            <page string="Email Restrictions" name="email_restrictions">
+                                <group>
+                                    <field name="email_restrictions" widget="text" 
+                                           placeholder="Enter one email address per line&#10;customer1@example.com&#10;customer2@example.com"
+                                           help="Comma-separated or one per line list of email addresses that can use this coupon"/>
+                                </group>
+                            </page>
+                            
+                            <page string="WooCommerce Data" name="wc_data" invisible="not wc_data">
+                                <group>
+                                    <field name="wc_data" widget="text" readonly="1" nolabel="1"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Sync Information" name="sync_info">
+                                <group>
+                                    <group>
+                                        <field name="sync_status"/>
+                                        <field name="last_sync"/>
+                                        <field name="sync_error" widget="text" invisible="not sync_error"/>
+                                    </group>
+                                    <group>
+                                        <field name="date_expires_gmt" readonly="1"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+        
+        <!-- Coupon Search View -->
+        <record id="view_woocommerce_coupon_search" model="ir.ui.view">
+            <field name="name">woocommerce.coupon.search</field>
+            <field name="model">woocommerce.coupon</field>
+            <field name="arch" type="xml">
+                <search string="Search Coupons">
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="connection_id"/>
+                    <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Inactive" name="inactive" domain="[('active', '=', False)]"/>
+                    <filter string="Synced" name="synced" domain="[('sync_status', '=', 'synced')]"/>
+                    <filter string="Pending" name="pending" domain="[('sync_status', '=', 'pending')]"/>
+                    <filter string="Error" name="error" domain="[('sync_status', '=', 'error')]"/>
+                    <filter string="Expired" name="expired" domain="[('date_expires', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                    <separator/>
+                    <filter string="Free Shipping" name="free_shipping" domain="[('free_shipping', '=', True)]"/>
+                    <filter string="Individual Use" name="individual_use" domain="[('individual_use', '=', True)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="Connection" name="group_connection" context="{'group_by': 'connection_id'}"/>
+                        <filter string="Discount Type" name="group_discount_type" context="{'group_by': 'discount_type'}"/>
+                        <filter string="Sync Status" name="group_sync_status" context="{'group_by': 'sync_status'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+        
+        <!-- Coupon Action -->
+        <record id="action_woocommerce_coupon" model="ir.actions.act_window">
+            <field name="name">Coupons</field>
+            <field name="res_model">woocommerce.coupon</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_woocommerce_coupon_search"/>
+            <field name="context">{}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first WooCommerce coupon!
+                </p>
+                <p>
+                    Create promotional coupons, discount codes, and special offers for your WooCommerce store.
+                    You can set discount amounts, usage limits, product restrictions, and more.
+                </p>
+            </field>
+        </record>
+        
+        <!-- Add Import Coupons button to Connection form -->
+        <record id="view_woocommerce_connection_form_coupons" model="ir.ui.view">
+            <field name="name">woocommerce.connection.form.coupons</field>
+            <field name="model">woocommerce.connection</field>
+            <field name="inherit_id" ref="view_woocommerce_connection_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//button[@name='action_import_odoo_products']" position="after">
+                    <button name="action_import_coupons" string="Import Coupons" type="object" 
+                            class="btn-secondary" icon="fa-download"
+                            invisible="connection_status != 'success'"/>
+                </xpath>
+            </field>
+        </record>
+        
+    </data>
+</odoo>
+
