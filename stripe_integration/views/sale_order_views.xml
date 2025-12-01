@@ -38,8 +38,8 @@
                         <field name="stripe_payment_link_status" readonly="1"/>
                         <field name="stripe_payment_link_created" readonly="1"/>
                         <field name="stripe_payment_succeeded" readonly="1"/>
-                        <field name="stripe_invoice_id" readonly="1" invisible="not stripe_invoice_id"/>
-                        <field name="stripe_hosted_invoice_url" readonly="1" invisible="not stripe_hosted_invoice_url"/>
+                        <field name="stripe_invoice_id" readonly="1" placeholder="Not available yet"/>
+                        <field name="stripe_hosted_invoice_url" readonly="1" placeholder="Not available yet"/>
                     </group>
                 </xpath>
             </field>
