@@ -54,7 +54,9 @@ class WooCommerceWebhookController(http.Controller):
                         headers=[('Content-Type', 'application/json')]
                     )
             except json.JSONDecodeError as e:
-                _logger.error(f'Error parsing webhook data as JSON: {e}')
+                # Log as warning since invalid JSON is a client error, not a server error
+                # This is expected in tests that send invalid JSON to test error handling
+                _logger.warning(f'Invalid JSON in webhook data: {e}')
                 return request.make_response('Invalid JSON data', status=400)
             except Exception as e:
                 _logger.error(f'Unexpected error parsing webhook data: {e}')
