@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_res_config_settings_stripe" model="ir.ui.view">
+            <field name="name">res.config.settings.stripe</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//form" position="inside">
+                    <div class="app_settings_block" data-string="Stripe Integration" string="Stripe Integration" data-key="stripe_integration">
+                        <h2>Stripe Integration</h2>
+                        <div class="row mt16 o_settings_container">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="stripe_api_key" widget="password"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="stripe_api_key">Stripe API Key</label>
+                                    <div class="text-muted">
+                                        Your Stripe Secret API Key. Get it from 
+                                        <a href="https://dashboard.stripe.com/apikeys" target="_blank">Stripe Dashboard</a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane">
+                                    <field name="stripe_webhook_url" readonly="1"/>
+                                </div>
+                                <div class="o_setting_right_pane">
+                                    <label for="stripe_webhook_url">Webhook URL</label>
+                                    <div class="text-muted">
+                                        Configure this URL in your Stripe Dashboard under Webhooks
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
