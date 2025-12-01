@@ -19,7 +19,7 @@ class WooCommerceWebhookController(http.Controller):
             webhook = request.env['woocommerce.order.webhook'].browse(webhook_id)
             if not webhook.exists() or not webhook.active:
                 # Log as info in tests (expected behavior), warning in production
-                is_testing = hasattr(threading.current_thread(), 'testing') and threading.current_thread().testing
+                is_testing = request.registry.in_test_mode() if hasattr(request, 'registry') else False
                 if is_testing:
                     _logger.info(f'Webhook {webhook_id} not found or inactive (test mode)')
                 else:
@@ -60,9 +60,13 @@ class WooCommerceWebhookController(http.Controller):
                         headers=[('Content-Type', 'application/json')]
                     )
             except json.JSONDecodeError as e:
-                # Log as warning since invalid JSON is a client error, not a server error
-                # This is expected in tests that send invalid JSON to test error handling
-                _logger.warning(f'Invalid JSON in webhook data: {e}')
+                # Log as info in tests (expected), warning in production
+                # Invalid JSON is a client error, not a server error
+                is_testing = request.registry.in_test_mode() if hasattr(request, 'registry') else False
+                if is_testing:
+                    _logger.info(f'Invalid JSON in webhook data (test mode): {e}')
+                else:
+                    _logger.warning(f'Invalid JSON in webhook data: {e}')
                 return request.make_response('Invalid JSON data', status=400)
             except Exception as e:
                 _logger.error(f'Unexpected error parsing webhook data: {e}')
