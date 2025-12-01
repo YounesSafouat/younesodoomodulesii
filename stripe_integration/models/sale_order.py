@@ -186,6 +186,9 @@ class SaleOrder(models.Model):
             
             data[f'{prefix}[quantity]'] = item.get('quantity', 1)
         
+        # Enable invoice creation for this payment link
+        data['invoice_creation[enabled]'] = 'true'
+        
         try:
             response = requests.post(
                 url,
