@@ -35,6 +35,11 @@ class StripeWebhookController(http.Controller):
             event_data = webhook_data.get('data', {}).get('object', {})
             
             _logger.info(f"🔔 Stripe webhook event: {event_type}")
+            _logger.info(f"📦 Webhook data keys: {list(event_data.keys())}")
+            
+            # Log invoice-related fields for debugging
+            if 'invoice' in event_data:
+                _logger.info(f"📄 Invoice field type: {type(event_data.get('invoice'))}, value: {event_data.get('invoice')}")
             
             if event_type == 'checkout.session.completed':
                 _logger.info("✅ Payment completed via Stripe")
@@ -59,6 +64,9 @@ class StripeWebhookController(http.Controller):
         This is triggered when a customer completes payment via a payment link.
         """
         try:
+            _logger.info(f"📋 Processing checkout.session.completed event")
+            _logger.info(f"📋 Session data keys: {list(session_data.keys())}")
+            
             payment_link_id = session_data.get('payment_link')
             
             if not payment_link_id:
@@ -84,16 +92,27 @@ class StripeWebhookController(http.Controller):
             postal_code = address.get('postal_code')
             country = address.get('country')
             
-            # Get invoice information if available
-            invoice_id = session_data.get('invoice')
-            hosted_invoice_url = session_data.get('hosted_invoice_url')
+            # Handle invoice - it can be an object (if expanded) or a string ID
+            invoice_id = None
+            hosted_invoice_url = None
             
-            # If invoice_id is a string (invoice ID), fetch the hosted URL
+            invoice_data_raw = session_data.get('invoice')
+            if invoice_data_raw:
+                # If invoice is an object (expanded), get the ID from it
+                if isinstance(invoice_data_raw, dict):
+                    invoice_id = invoice_data_raw.get('id')
+                    hosted_invoice_url = invoice_data_raw.get('hosted_invoice_url')
+                # If invoice is a string (ID), use it directly
+                elif isinstance(invoice_data_raw, str):
+                    invoice_id = invoice_data_raw
+            
+            # Always fetch invoice details if we have an invoice ID but no hosted URL
             if invoice_id and not hosted_invoice_url:
                 try:
                     stripe_api_key = request.env['ir.config_parameter'].sudo().get_param('stripe_integration.api_key')
                     if stripe_api_key:
                         import requests
+                        _logger.info(f"🔍 Fetching invoice details for invoice ID: {invoice_id}")
                         invoice_response = requests.get(
                             f'https://api.stripe.com/v1/invoices/{invoice_id}',
                             headers={'Authorization': f'Bearer {stripe_api_key}'},
@@ -102,8 +121,17 @@ class StripeWebhookController(http.Controller):
                         if invoice_response.status_code == 200:
                             invoice_data = invoice_response.json()
                             hosted_invoice_url = invoice_data.get('hosted_invoice_url')
+                            _logger.info(f"✅ Fetched hosted invoice URL: {hosted_invoice_url}")
+                        else:
+                            _logger.warning(f"⚠️ Failed to fetch invoice: {invoice_response.status_code} - {invoice_response.text}")
                 except Exception as e:
-                    _logger.warning(f"Could not fetch invoice URL: {str(e)}")
+                    _logger.error(f"❌ Error fetching invoice URL: {str(e)}")
+            
+            # Log invoice information for debugging
+            if invoice_id:
+                _logger.info(f"📄 Invoice ID: {invoice_id}, Hosted URL: {hosted_invoice_url}")
+            else:
+                _logger.info("ℹ️ No invoice found in checkout session (invoice creation may not be enabled for this payment link)")
             
             sale_order.write({
                 'stripe_payment_link_status': 'paid',
