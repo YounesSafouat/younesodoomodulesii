@@ -1,14 +1,12 @@
-# NELY - Odoo Custom Modules
+# BlackswanTechnology - Odoo Custom Modules
 
-This repository contains custom Odoo modules for NELY business operations.
+This repository contains custom Odoo modules for BlackswanTechnology business operations.
 
 ## Modules
 
 - **woocommerce_integration** - WooCommerce bidirectional sync integration
+- **stripe_integration** - Integration with Stripe payment gateway
 - **yousign_integration** - YouSign electronic signature integration
-- **nely_signature** - Custom signature functionality
-- **nely_constrains** - Custom business constraints
-- **l10n_fr_partner_enrich_pappers** - French partner enrichment
 
 ---
 

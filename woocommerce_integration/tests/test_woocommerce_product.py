@@ -60,12 +60,42 @@ class TestWooCommerceProduct(TransactionCase):
     def test_compute_variant_count(self):
         self.assertEqual(self.wc_product.variant_count, 0)
 
-    def test_write_syncs_to_woocommerce(self):
+    @patch('odoo.addons.woocommerce_integration.models.woocommerce_connection.requests.put')
+    @patch('odoo.addons.woocommerce_integration.models.woocommerce_connection.requests.get')
+    def test_write_syncs_to_woocommerce(self, mock_get, mock_put):
+        # Mock the GET request for fetching current product data
+        mock_get_response = MagicMock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            'id': 123,
+            'name': 'Test Product',
+            'regular_price': '29.99',
+            'status': 'publish',
+            'attributes': []
+        }
+        mock_get_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_get_response
+        
+        # Mock the PUT request for updating product
+        mock_put_response = MagicMock()
+        mock_put_response.status_code = 200
+        mock_put_response.json.return_value = {
+            'id': 123,
+            'name': 'Updated Product',
+            'regular_price': '39.99'
+        }
+        mock_put_response.raise_for_status = MagicMock()
+        mock_put.return_value = mock_put_response
+        
         self.wc_product.write({
             'name': 'Updated Product',
-            'price': 39.99
+            'regular_price': 39.99
         })
         self.assertEqual(self.wc_product.name, 'Updated Product')
+        self.assertEqual(self.wc_product.regular_price, 39.99)
+        
+        # Verify that the HTTP requests were called
+        self.assertTrue(mock_put.called, "PUT request should be called to update product")
 
     def test_create_from_wc_data(self):
         wc_data = {
