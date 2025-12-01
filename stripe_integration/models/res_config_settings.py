@@ -20,9 +20,8 @@ class ResConfigSettings(models.TransientModel):
         help='Use this URL when configuring webhooks in Stripe Dashboard'
     )
     
-    @api.model
-    def get_default_stripe_webhook_url(self):
-        """Get default webhook URL for settings form"""
+    def _get_webhook_url(self):
+        """Helper method to get webhook URL"""
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url', '')
         if not base_url:
             # Fallback: try to get from request if available
@@ -35,19 +34,22 @@ class ResConfigSettings(models.TransientModel):
         
         return f"{base_url}/stripe/webhook" if base_url else "/stripe/webhook"
     
+    @api.model
+    def get_default_stripe_webhook_url(self):
+        """Get default webhook URL for settings form"""
+        return self._get_webhook_url()
+    
+    @api.model
+    def default_get(self, fields_list):
+        """Override to ensure webhook URL is computed on form load"""
+        res = super().default_get(fields_list)
+        if 'stripe_webhook_url' in fields_list:
+            res['stripe_webhook_url'] = self._get_webhook_url()
+        return res
+    
     @api.depends()
     def _compute_webhook_url(self):
         """Compute the webhook URL for display"""
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url', '')
-        if not base_url:
-            # Fallback: try to get from request if available
-            try:
-                from odoo.http import request
-                if hasattr(request, 'httprequest') and request.httprequest:
-                    base_url = request.httprequest.host_url.rstrip('/')
-            except:
-                pass
-        
-        webhook_url = f"{base_url}/stripe/webhook" if base_url else "/stripe/webhook"
+        webhook_url = self._get_webhook_url()
         for record in self:
             record.stripe_webhook_url = webhook_url
