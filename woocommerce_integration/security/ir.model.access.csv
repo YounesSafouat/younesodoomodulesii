@@ -17,10 +17,10 @@ access_woocommerce_conflict_resolution_wizard_user,woocommerce.conflict.resoluti
 access_woocommerce_conflict_resolution_wizard_manager,woocommerce.conflict.resolution.wizard.manager,model_woocommerce_conflict_resolution_wizard,base.group_system,1,1,1,1
 access_woocommerce_field_mapping_user,woocommerce.field.mapping.user,model_woocommerce_field_mapping,base.group_user,1,1,1,0
 access_woocommerce_field_mapping_manager,woocommerce.field.mapping.manager,model_woocommerce_field_mapping,base.group_system,1,1,1,1
-access_woocommerce_order_webhook_public,woocommerce.order.webhook.public,model_woocommerce_order_webhook,,1,0,0,0
+access_woocommerce_order_webhook_public,woocommerce.order.webhook.public,model_woocommerce_order_webhook,base.group_public,1,0,0,0
 access_woocommerce_order_webhook_user,woocommerce.order.webhook.user,model_woocommerce_order_webhook,base.group_user,1,1,1,0
 access_woocommerce_order_webhook_manager,woocommerce.order.webhook.manager,model_woocommerce_order_webhook,base.group_system,1,1,1,1
-access_woocommerce_order_webhook_log_public,woocommerce.order.webhook.log.public,model_woocommerce_order_webhook_log,,1,1,0,0
+access_woocommerce_order_webhook_log_public,woocommerce.order.webhook.log.public,model_woocommerce_order_webhook_log,base.group_public,1,1,0,0
 access_woocommerce_order_webhook_log_user,woocommerce.order.webhook.log.user,model_woocommerce_order_webhook_log,base.group_user,1,0,0,0
 access_woocommerce_order_webhook_log_manager,woocommerce.order.webhook.log.manager,model_woocommerce_order_webhook_log,base.group_system,1,1,1,1
 access_res_config_settings_woocommerce,res.config.settings.woocommerce,model_res_config_settings,base.group_system,1,1,1,1

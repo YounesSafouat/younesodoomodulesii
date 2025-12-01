@@ -344,14 +344,19 @@ class WooCommerceImportWizard(models.TransientModel):
 
         try:
             self.connection_id.sudo().write({'import_log': ''})
-            self.env.cr.commit()
+            # Only commit if not in test environment (TestCursor doesn't allow commit/rollback)
+            from odoo.sql_db import TestCursor
+            if not isinstance(self.env.cr, TestCursor):
+                self.env.cr.commit()
         except Exception as e:
-
-            try:
-                if not self.env.cr.closed:
-                    self.env.cr.rollback()
-            except Exception:
-                pass
+            # Only rollback if not in test environment
+            from odoo.sql_db import TestCursor
+            if not isinstance(self.env.cr, TestCursor):
+                try:
+                    if not self.env.cr.closed:
+                        self.env.cr.rollback()
+                except Exception:
+                    pass
             _logger.warning(f'Error clearing import log: {e}')
         
 

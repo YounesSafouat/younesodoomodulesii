@@ -60,7 +60,7 @@
                                 <field name="overwrite_existing" invisible="state != 'draft'"/>
                             </group>
                             <group>
-                                <div class="alert alert-info" style="margin-top: 10px;">
+                                <div class="alert alert-info" role="alert" style="margin-top: 10px;">
                                     <strong>Note:</strong><br/>
                                     • <strong>Update if Exists:</strong> Updates existing products with new data<br/>
                                     • <strong>Overwrite Existing:</strong> Deletes and recreates products<br/>
