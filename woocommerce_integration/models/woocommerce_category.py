@@ -170,8 +170,9 @@ class ProductCategory(models.Model):
     )
     
     wc_category_count = fields.Integer(
-        string='WooCommerce Categories',
-        compute='_compute_wc_category_count'
+        string='WooCommerce Categories Count',
+        compute='_compute_wc_category_count',
+        help='Number of WooCommerce categories mapped to this Odoo category'
     )
     
     @api.depends('wc_category_ids')

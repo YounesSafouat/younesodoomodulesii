@@ -236,21 +236,23 @@ class WooCommerceCoupon(models.Model):
                 raise ValidationError(_('Coupon code "%s" already exists for this connection.') % coupon.code)
     
     @api.model
-    def create(self, vals):
+    @api.model_create_multi
+    def create(self, vals_list):
         """Override create to sync to WooCommerce"""
-        coupon = super(WooCommerceCoupon, self).create(vals)
+        coupons = super(WooCommerceCoupon, self).create(vals_list)
         
-        if coupon.connection_id and coupon.code:
-            try:
-                coupon.action_sync_to_woocommerce()
-            except Exception as e:
-                _logger.error(f"Error syncing coupon to WooCommerce on create: {e}")
-                coupon.write({
-                    'sync_status': 'error',
-                    'sync_error': str(e)
-                })
+        for coupon in coupons:
+            if coupon.connection_id and coupon.code:
+                try:
+                    coupon.action_sync_to_woocommerce()
+                except Exception as e:
+                    _logger.error(f"Error syncing coupon to WooCommerce on create: {e}")
+                    coupon.write({
+                        'sync_status': 'error',
+                        'sync_error': str(e)
+                    })
         
-        return coupon
+        return coupons
     
     def write(self, vals):
         """Override write to sync changes to WooCommerce"""
