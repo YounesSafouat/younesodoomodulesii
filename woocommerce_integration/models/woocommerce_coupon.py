@@ -235,7 +235,6 @@ class WooCommerceCoupon(models.Model):
             if existing:
                 raise ValidationError(_('Coupon code "%s" already exists for this connection.') % coupon.code)
     
-    @api.model
     @api.model_create_multi
     def create(self, vals_list):
         """Override create to sync to WooCommerce"""
