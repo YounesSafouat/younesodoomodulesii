@@ -123,6 +123,20 @@ class SaleOrder(models.Model):
         if not stripe_api_key:
             raise UserError(_('Stripe API key is not configured. Please configure it in Settings > Stripe Integration.'))
         
+        # Validate API key format - must be a secret key (sk_*) not a publishable key (pk_*)
+        stripe_api_key = stripe_api_key.strip()
+        if stripe_api_key.startswith('pk_'):
+            raise UserError(_(
+                'Invalid Stripe API key: You are using a publishable key (pk_*). '
+                'Please use a secret key (sk_test_* or sk_live_*) instead. '
+                'Get your secret key from: https://dashboard.stripe.com/apikeys'
+            ))
+        if not stripe_api_key.startswith('sk_'):
+            raise UserError(_(
+                'Invalid Stripe API key format. The key should start with "sk_test_" (for test mode) '
+                'or "sk_live_" (for live mode). Get your secret key from: https://dashboard.stripe.com/apikeys'
+            ))
+        
         line_items = []
         for line in self.order_line:
             if not line.display_type:  
@@ -169,6 +183,29 @@ class SaleOrder(models.Model):
                 data=data, 
                 timeout=30
             )
+            
+            # Handle 403 Forbidden errors with more helpful messages
+            if response.status_code == 403:
+                try:
+                    error_data = response.json()
+                    error_message = error_data.get('error', {}).get('message', 'Forbidden')
+                    _logger.error(f'Stripe API 403 Forbidden: {error_message}. Response: {response.text}')
+                    raise UserError(_(
+                        'Stripe API authentication failed (403 Forbidden). '
+                        'Please verify that:\n'
+                        '1. You are using a Secret API Key (starts with sk_test_ or sk_live_)\n'
+                        '2. The API key is correct and not expired\n'
+                        '3. The API key has the necessary permissions\n'
+                        'Error details: %s'
+                    ) % error_message)
+                except (ValueError, KeyError):
+                    _logger.error(f'Stripe API 403 Forbidden. Response: {response.text}')
+                    raise UserError(_(
+                        'Stripe API authentication failed (403 Forbidden). '
+                        'Please verify your API key in Settings > Stripe Integration. '
+                        'Make sure you are using a Secret API Key (sk_test_* or sk_live_*), '
+                        'not a Publishable Key (pk_*).'
+                    ))
             
             response.raise_for_status()  
             result = response.json()
