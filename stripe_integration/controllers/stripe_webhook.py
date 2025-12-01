@@ -84,6 +84,27 @@ class StripeWebhookController(http.Controller):
             postal_code = address.get('postal_code')
             country = address.get('country')
             
+            # Get invoice information if available
+            invoice_id = session_data.get('invoice')
+            hosted_invoice_url = session_data.get('hosted_invoice_url')
+            
+            # If invoice_id is a string (invoice ID), fetch the hosted URL
+            if invoice_id and not hosted_invoice_url:
+                try:
+                    stripe_api_key = request.env['ir.config_parameter'].sudo().get_param('stripe_integration.api_key')
+                    if stripe_api_key:
+                        import requests
+                        invoice_response = requests.get(
+                            f'https://api.stripe.com/v1/invoices/{invoice_id}',
+                            headers={'Authorization': f'Bearer {stripe_api_key}'},
+                            timeout=10
+                        )
+                        if invoice_response.status_code == 200:
+                            invoice_data = invoice_response.json()
+                            hosted_invoice_url = invoice_data.get('hosted_invoice_url')
+                except Exception as e:
+                    _logger.warning(f"Could not fetch invoice URL: {str(e)}")
+            
             sale_order.write({
                 'stripe_payment_link_status': 'paid',
                 'stripe_payment_succeeded': True,
@@ -94,6 +115,8 @@ class StripeWebhookController(http.Controller):
                 'stripe_customer_city': city,
                 'stripe_customer_postal_code': postal_code,
                 'stripe_customer_country': country,
+                'stripe_invoice_id': invoice_id,
+                'stripe_hosted_invoice_url': hosted_invoice_url,
             })
             
             _logger.info(f"✅ Updated sale order {sale_order.name} with payment information")

@@ -98,6 +98,18 @@ class SaleOrder(models.Model):
         default=False,
         help='True when payment has been successfully completed'
     )
+    
+    stripe_invoice_id = fields.Char(
+        string='Stripe Invoice ID',
+        readonly=True,
+        help='The Stripe Invoice ID created from the payment link'
+    )
+    
+    stripe_hosted_invoice_url = fields.Char(
+        string='Stripe Hosted Invoice URL',
+        readonly=True,
+        help='The hosted invoice URL where customers can view and pay their invoice'
+    )
 
 
 
@@ -249,5 +261,18 @@ class SaleOrder(models.Model):
         return {
             'type': 'ir.actions.act_url',
             'url': self.stripe_payment_link_url,
+            'target': 'new',
+        }
+    
+    def action_open_stripe_invoice(self):
+        """Open the Stripe hosted invoice URL in a new window"""
+        self.ensure_one()
+        
+        if not self.stripe_hosted_invoice_url:
+            raise UserError(_('No hosted invoice URL available for this quotation.'))
+        
+        return {
+            'type': 'ir.actions.act_url',
+            'url': self.stripe_hosted_invoice_url,
             'target': 'new',
         }    
