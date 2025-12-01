@@ -15,6 +15,7 @@
     'depends': ['base', 'account', 'sale'],
     'data': [
         'security/ir.model.access.csv',
+        'data/mail_template_data.xml',
         'views/sale_order_views.xml',
         'views/res_config_settings.xml',
     ],

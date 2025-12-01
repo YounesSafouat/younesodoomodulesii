@@ -37,7 +37,6 @@ class StripeWebhookController(http.Controller):
             _logger.info(f"🔔 Stripe webhook event: {event_type}")
             _logger.info(f"📦 Webhook data keys: {list(event_data.keys())}")
             
-            # Log invoice-related fields for debugging
             if 'invoice' in event_data:
                 _logger.info(f"📄 Invoice field type: {type(event_data.get('invoice'))}, value: {event_data.get('invoice')}")
             
