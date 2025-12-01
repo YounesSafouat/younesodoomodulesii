@@ -127,12 +127,37 @@ class TestWooCommerceProduct(TransactionCase):
         result = self.wc_product.action_sync_to_woocommerce()
         self.assertEqual(result['params']['type'], 'success')
 
-    def test_prepare_partial_woocommerce_data(self):
-        self.wc_product.name = 'Test Product'
-        self.wc_product.regular_price = 29.99
-        self.wc_product.sale_price = 24.99
-        self.wc_product.status = 'publish'
-        self.wc_product.wc_sku = 'TEST-123'
+    @patch('odoo.addons.woocommerce_integration.models.woocommerce_connection.requests.put')
+    @patch('odoo.addons.woocommerce_integration.models.woocommerce_connection.requests.get')
+    def test_prepare_partial_woocommerce_data(self, mock_get, mock_put):
+        # Mock the GET request for fetching current product data
+        mock_get_response = MagicMock()
+        mock_get_response.status_code = 200
+        mock_get_response.json.return_value = {
+            'id': 123,
+            'name': 'Test Product',
+            'regular_price': '29.99',
+            'status': 'publish',
+            'attributes': []
+        }
+        mock_get_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_get_response
+        
+        # Mock the PUT request for updating product
+        mock_put_response = MagicMock()
+        mock_put_response.status_code = 200
+        mock_put_response.json.return_value = {'id': 123}
+        mock_put_response.raise_for_status = MagicMock()
+        mock_put.return_value = mock_put_response
+        
+        # Use write() with context to prevent sync, or mock will handle it
+        self.wc_product.with_context(importing_from_woocommerce=True).write({
+            'name': 'Test Product',
+            'regular_price': 29.99,
+            'sale_price': 24.99,
+            'status': 'publish',
+            'wc_sku': 'TEST-123'
+        })
         
         data = self.wc_product._prepare_partial_woocommerce_data(
             ['name', 'regular_price', 'sale_price', 'status', 'wc_sku']
