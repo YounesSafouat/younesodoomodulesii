@@ -23,7 +23,7 @@ try:
     PDF2IMAGE_AVAILABLE = True
 except ImportError:
     PDF2IMAGE_AVAILABLE = False
-    _logger.warning("pdf2image library not available. PDF QR code extraction will not work.")
+    _logger.info("pdf2image library not available. PDF QR code extraction will not work. Install with: pip install pdf2image")
 
 
 class Document(models.Model):
@@ -127,7 +127,7 @@ class Document(models.Model):
             str|False: QR code text if found, False otherwise
         """
         if not PDF2IMAGE_AVAILABLE:
-            _logger.warning("pdf2image not available, cannot extract QR code from PDF")
+            _logger.debug("pdf2image not available, cannot extract QR code from PDF")
             return False
         
         try:
