@@ -275,4 +275,17 @@ class SaleOrder(models.Model):
             'type': 'ir.actions.act_url',
             'url': self.stripe_hosted_invoice_url,
             'target': 'new',
-        }    
+        }
+    
+    def _find_mail_template(self):
+        """Override to use custom template with Stripe payment button"""
+        # Get the original template
+        mail_template = super()._find_mail_template()
+        
+        # If we have a Stripe payment link or need payment, use our custom template
+        if self.stripe_payment_link_url or self._has_to_be_paid():
+            custom_template = self.env.ref('stripe_integration.email_template_edi_sale_stripe', raise_if_not_found=False)
+            if custom_template:
+                return custom_template
+        
+        return mail_template    
