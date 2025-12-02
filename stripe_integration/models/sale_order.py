@@ -110,9 +110,11 @@ class SaleOrder(models.Model):
         readonly=True,
         help='The hosted invoice URL where customers can view and pay their invoice'
     )
-
-
-
+    
+    def _should_show_stripe_payment_button(self):
+        """Check if Stripe payment button should be shown"""
+        self.ensure_one()
+        return bool(self.stripe_payment_link_url and self._has_to_be_paid())
 
     #methods stripe
     def action_generate_stripe_payment_link(self):
