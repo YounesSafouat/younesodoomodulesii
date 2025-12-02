@@ -23,24 +23,26 @@
         
         <!-- Template for bottom button in sale_order_portal_content -->
         <template id="sale_order_portal_content_stripe" inherit_id="sale.sale_order_portal_content" name="Sale Order Portal Content - Stripe">
-            <!-- Replace bottom Pay Now button: use Stripe link if available, otherwise default modal -->
-            <xpath expr="//div[@name='sale_order_actions']//div[hasclass('col-sm-auto') and hasclass('mt8')]/a[@data-bs-target='#modalaccept']" position="replace">
-                <a t-if="sale_order.stripe_payment_link_url and sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" 
-                   role="button" 
-                   t-att-href="sale_order.stripe_payment_link_url" 
-                   target="_blank"
-                   t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
-                    <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
-                </a>
-                <a t-elif="sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" 
-                   role="button" 
-                   data-bs-toggle="modal" 
-                   data-bs-target="#modalaccept" 
-                   href="#" 
-                   t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
-                    <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
-                </a>
+            <!-- Replace the div containing the Pay Now button - target by class and containing anchor -->
+            <xpath expr="//div[@name='sale_order_actions']/div[hasclass('col-sm-auto') and hasclass('mt8') and ./a[@data-bs-target='#modalaccept']]" position="replace">
+                <div t-if="sale_order.stripe_payment_link_url and sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" class="col-sm-auto mt8">
+                    <a role="button" 
+                       t-att-href="sale_order.stripe_payment_link_url" 
+                       target="_blank"
+                       t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
+                        <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
+                    </a>
+                </div>
+                <div t-elif="sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" class="col-sm-auto mt8">
+                    <a role="button" 
+                       data-bs-toggle="modal" 
+                       data-bs-target="#modalaccept" 
+                       href="#" 
+                       t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
+                        <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
+                    </a>
+                </div>
             </xpath>
         </template>
     </data>
-</odoo>
+    </odoo>
