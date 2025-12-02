@@ -24,8 +24,8 @@
                 </a>
             </xpath>
             
-            <!-- Replace bottom Pay Now button: use Stripe link if available, otherwise default modal -->
-            <xpath expr="//div[@name='sale_order_actions']//div[@class='col-sm-auto mt8']/a[@data-bs-target='#modalaccept']" position="replace">
+            <!-- Replace bottom Pay Now button div: use Stripe link if available, otherwise default modal -->
+            <xpath expr="//div[@name='sale_order_actions']/div[contains(@class, 'col-sm-auto') and contains(@class, 'mt8')]/a[@data-bs-target='#modalaccept']" position="replace">
                 <a t-if="sale_order.stripe_payment_link_url and sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" 
                    role="button" 
                    t-att-href="sale_order.stripe_payment_link_url" 
