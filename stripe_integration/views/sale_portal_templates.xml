@@ -1,48 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Extend portal template to redirect Pay Now buttons to Stripe payment link -->
+        <!-- Extend portal template to add Stripe payment link data attribute for JavaScript -->
         <template id="sale_order_portal_content_stripe" inherit_id="sale.sale_order_portal_content" name="Sale Order Portal Content - Stripe">
-            <!-- Replace sidebar Pay Now button when Stripe link exists -->
-            <xpath expr="//a[@id='o_sale_portal_paynow']" position="replace">
-                <a t-if="sale_order.stripe_payment_link_url and sale_order._has_to_be_paid()" 
-                   role="button" 
-                   id="o_sale_portal_paynow" 
-                   t-att-href="sale_order.stripe_payment_link_url" 
-                   target="_blank"
-                   t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
-                    <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
-                </a>
-                <a t-elif="sale_order._has_to_be_paid()" 
-                   role="button" 
-                   id="o_sale_portal_paynow" 
-                   data-bs-toggle="modal" 
-                   data-bs-target="#modalaccept" 
-                   href="#" 
-                   t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
-                    <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
-                </a>
-            </xpath>
-            
-            <!-- Replace bottom Pay Now button when Stripe link exists -->
-            <xpath expr="//div[@name='sale_order_actions']//a[@data-bs-target='#modalaccept'][not(ancestor::t[@t-if='sale_order._has_to_be_signed()'])]" position="replace">
-                <a t-if="sale_order.stripe_payment_link_url and sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" 
-                   role="button" 
-                   t-att-href="sale_order.stripe_payment_link_url" 
-                   target="_blank"
-                   t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
-                    <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
-                </a>
-                <a t-elif="sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" 
-                   role="button" 
-                   data-bs-toggle="modal" 
-                   data-bs-target="#modalaccept" 
-                   href="#" 
-                   t-att-class="'%s' % ('btn btn-light' if sale_order.transaction_ids else 'btn btn-primary')">
-                    <i class="fa fa-check"/> <t t-if="not sale_order.signature">Accept &amp; Pay</t><t t-else="">Pay Now</t>
-                </a>
+            <!-- Add data attribute to main content div with Stripe payment link URL -->
+            <xpath expr="//div[@id='quote_content']" position="attributes">
+                <attribute name="t-att-data-stripe-payment-link-url">sale_order.stripe_payment_link_url</attribute>
             </xpath>
         </template>
     </data>
 </odoo>
-

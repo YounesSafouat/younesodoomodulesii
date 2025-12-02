@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _
+from odoo.http import request
 
 
 class ResConfigSettings(models.TransientModel):
@@ -25,7 +26,6 @@ class ResConfigSettings(models.TransientModel):
         base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url', '')
         if not base_url:
             try:
-                from odoo.http import request
                 if hasattr(request, 'httprequest') and request.httprequest:
                     base_url = request.httprequest.host_url.rstrip('/')
             except:
