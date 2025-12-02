@@ -19,11 +19,6 @@
         'views/sale_portal_templates.xml',
         'views/res_config_settings.xml',
     ],
-    'assets': {
-        'web.assets_frontend': [
-            'stripe_integration/static/src/js/stripe_portal_sidebar.js',
-        ],
-    },
     'installable': True,
     'application': False,
     'license': 'LGPL-3',
