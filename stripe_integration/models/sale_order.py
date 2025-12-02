@@ -277,15 +277,25 @@ class SaleOrder(models.Model):
             'target': 'new',
         }
     
-    def _find_mail_template(self):
-        """Override to use custom template with Stripe payment button"""
-        # Get the original template
-        mail_template = super()._find_mail_template()
+    def _notify_get_recipients_groups(self, message, model_description, msg_vals=None):
+        """Override to update the email notification button to use Stripe payment link"""
+        groups = super()._notify_get_recipients_groups(message, model_description, msg_vals=msg_vals)
         
-        # If we have a Stripe payment link or need payment, use our custom template
-        if self.stripe_payment_link_url or self._has_to_be_paid():
-            custom_template = self.env.ref('stripe_integration.email_template_edi_sale_stripe', raise_if_not_found=False)
-            if custom_template:
-                return custom_template
+        if not self:
+            return groups
         
-        return mail_template    
+        self.ensure_one()
+        
+        # Find the portal customer group and update the button URL if Stripe link exists
+        try:
+            customer_portal_group = next(group for group in groups if group[0] == 'portal_customer')
+        except StopIteration:
+            return groups
+        
+        # If we have a Stripe payment link, update the button to use it
+        if self.stripe_payment_link_url and self._has_to_be_paid():
+            access_opt = customer_portal_group[2].setdefault('button_access', {})
+            access_opt['url'] = self.stripe_payment_link_url
+            access_opt['title'] = _("Process to Payment")
+        
+        return groups    
