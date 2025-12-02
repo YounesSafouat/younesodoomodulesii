@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <template id="sale_order_portal_content_stripe" inherit_id="sale.sale_order_portal_content" name="Sale Order Portal Content - Stripe">
-            <!-- Add Stripe Pay Now button in sidebar -->
-            <xpath expr="//div[@id='sale_order_sidebar_button']" position="inside">
+        <template id="sale_order_portal_content_stripe" inherit_id="sale.sale_order_portal_template" name="Sale Order Portal Content - Stripe">
+            <!-- Add Stripe Pay Now button in sidebar - target through t-set block -->
+            <xpath expr="//t[@t-set='entries']//div[@id='sale_order_sidebar_button']" position="inside">
                 <a t-if="sale_order.stripe_payment_link_url and sale_order._has_to_be_paid() and not sale_order._has_to_be_signed()" 
                    role="button" 
                    id="o_sale_portal_paynow_stripe" 
@@ -15,7 +15,7 @@
             </xpath>
             
             <!-- Modify original Pay Now button to exclude Stripe link cases -->
-            <xpath expr="//div[@id='sale_order_sidebar_button']/a[@id='o_sale_portal_paynow']" position="attributes">
+            <xpath expr="//t[@t-set='entries']//div[@id='sale_order_sidebar_button']/a[@id='o_sale_portal_paynow']" position="attributes">
                 <attribute name="t-if">not sale_order.stripe_payment_link_url and sale_order._has_to_be_paid()</attribute>
             </xpath>
             
