@@ -286,13 +286,11 @@ class SaleOrder(models.Model):
         
         self.ensure_one()
         
-        # Find the portal customer group and update the button URL if Stripe link exists
         try:
             customer_portal_group = next(group for group in groups if group[0] == 'portal_customer')
         except StopIteration:
             return groups
         
-        # If we have a Stripe payment link, update the button to use it
         if self.stripe_payment_link_url and self._has_to_be_paid():
             access_opt = customer_portal_group[2].setdefault('button_access', {})
             access_opt['url'] = self.stripe_payment_link_url
